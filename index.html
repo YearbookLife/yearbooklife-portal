@@ -1141,92 +1141,139 @@
 
     // Initialize page with customer data
     function initializePage() {
-      const config = softwareConfig[customerData.planChoice];
-      
-      // Set school name
-      document.getElementById('schoolName').textContent = customerData.schoolName;
-      
-      // Set software info
-      document.getElementById('softwareName').textContent = config.displayName;
-      const linkElement = document.getElementById('softwareLink');
-      linkElement.href = config.url;
-      linkElement.innerHTML = `🚀 Open ${config.displayName}`;
-      
-      // Show Canva section if applicable
-      if (customerData.planChoice === 'Canva') {
-        document.getElementById('canvaSection').style.display = 'block';
-        document.getElementById('canvaGoogleDrive').querySelector('a').href = customerData.canvaGoogleDrive;
-        document.getElementById('canvaSubmissionForm').querySelector('a').href = customerData.canvaSubmissionForm;
-        document.getElementById('canvaCoverDimensions').textContent = customerData.canvaCoverDimensions;
+      try {
+        const config = softwareConfig[customerData.planChoice];
+        
+        // Set school name
+        const schoolNameEl = document.getElementById('schoolName');
+        if (schoolNameEl) schoolNameEl.textContent = customerData.schoolName;
+        
+        // Set software info
+        const softwareNameEl = document.getElementById('softwareName');
+        if (softwareNameEl) softwareNameEl.textContent = config.displayName;
+        const linkElement = document.getElementById('softwareLink');
+        if (linkElement) {
+          linkElement.href = config.url;
+          linkElement.innerHTML = `🚀 Open ${config.displayName}`;
+        }
+        
+        // Show Canva section if applicable
+        if (customerData.planChoice === 'Canva') {
+          const canvaSection = document.getElementById('canvaSection');
+          if (canvaSection) canvaSection.style.display = 'block';
+          const canvaGoogleDrive = document.getElementById('canvaGoogleDrive');
+          if (canvaGoogleDrive) {
+            const link = canvaGoogleDrive.querySelector('a');
+            if (link) link.href = customerData.canvaGoogleDrive;
+          }
+          const canvaSubmissionForm = document.getElementById('canvaSubmissionForm');
+          if (canvaSubmissionForm) {
+            const link = canvaSubmissionForm.querySelector('a');
+            if (link) link.href = customerData.canvaSubmissionForm;
+          }
+          const canvaCoverDimensions = document.getElementById('canvaCoverDimensions');
+          if (canvaCoverDimensions) canvaCoverDimensions.textContent = customerData.canvaCoverDimensions;
+        }
+        
+        // Helper function for safe text updates
+        const safeSetText = (elementId, text) => {
+          const el = document.getElementById(elementId);
+          if (el) el.textContent = text;
+        };
+        
+        // Populate contract details
+        safeSetText('planChoice', customerData.planChoice + " Plan");
+        safeSetText('numBooks', customerData.numBooks + " books");
+        safeSetText('numPages', customerData.numPages + " pages");
+        safeSetText('bindingType', customerData.bindingType);
+        safeSetText('bookSize', customerData.bookSize);
+        safeSetText('paperWeight', customerData.paperWeight);
+        safeSetText('submitDateBanner', customerData.submitDate);
+        safeSetText('deliveryDate', customerData.deliveryDate);
+        safeSetText('basePricePerBook', "$" + customerData.basePricePerBook.toFixed(2));
+        safeSetText('multiYearTerm', customerData.multiYearTerm);
+        safeSetText('shipping', customerData.shipping);
+        
+        // Optional items
+        if (customerData.optionalItem1) {
+          safeSetText('optionalItem1', customerData.optionalItem1 + " ($" + customerData.optionalItem1Price.toFixed(2) + "/book)");
+        }
+        if (customerData.optionalItem2) {
+          safeSetText('optionalItem2', customerData.optionalItem2 + " ($" + customerData.optionalItem2Price.toFixed(2) + "/book)");
+        }
+        if (customerData.optionalItem3) {
+          safeSetText('optionalItem3', customerData.optionalItem3 + " ($" + customerData.optionalItem3Price.toFixed(2) + "/book)");
+        }
+        
+        // Show invoice if URL exists
+        if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
+          const invoiceContent = document.getElementById('invoiceContent');
+          if (invoiceContent) invoiceContent.innerHTML = '<a href="' + customerData.invoiceUrl + '" target="_blank" style="color: #14b8a6; font-weight: 600; text-decoration: none;">📥 View/Download Invoice</a>';
+        }
+        
+        // Update Quick Links
+        const softwareLoginCard = document.getElementById('softwareLoginCard');
+        if (softwareLoginCard) {
+          softwareLoginCard.href = config.url;
+          const titleEl = softwareLoginCard.querySelector('.quick-link-title');
+          if (titleEl) titleEl.textContent = "Login to " + config.displayName;
+        }
+        
+        const customerHomeCard = document.getElementById('customerHomeCard');
+        if (customerHomeCard) customerHomeCard.href = config.customerPage;
+        
+        const storefrontCard = document.getElementById('storefrontCard');
+        if (storefrontCard) storefrontCard.href = config.storefrontForm;
+        
+        // Populate submission links
+        const submissionContainer = document.getElementById('submissionLinks');
+        if (submissionContainer) {
+          submissionContainer.innerHTML = '';
+          config.submissionLinks.forEach(link => {
+            const card = document.createElement('a');
+            card.href = link.url;
+            card.target = '_blank';
+            card.className = 'quick-link-card';
+            card.innerHTML = `
+              <div class="quick-link-icon">${link.icon}</div>
+              <div class="quick-link-title">${link.title}</div>
+              <div class="quick-link-desc">Step-by-step submission guide</div>
+            `;
+            submissionContainer.appendChild(card);
+          });
+        }
+        
+        // Populate support contacts
+        const supportContainer = document.getElementById('supportContacts');
+        if (supportContainer) {
+          supportContainer.innerHTML = '';
+          const supportCard = document.createElement('div');
+          supportCard.className = 'contact-card';
+          supportCard.innerHTML = `
+            <div class="contact-title">${config.displayName} Technical Support</div>
+            <div class="contact-info">
+              Phone: ${config.techSupport.link ? 
+                '<a href="' + config.techSupport.link + '" target="_blank">' + config.techSupport.phone + '</a>' : 
+                '<a href="tel:' + config.techSupport.phone.replace(/[^0-9]/g, '') + '">' + config.techSupport.phone + '</a>'
+              }<br>
+              ${config.techSupport.email ? 'Email: <a href="mailto:' + config.techSupport.email + '">' + config.techSupport.email + '</a>' : ''}
+            </div>
+          `;
+          supportContainer.appendChild(supportCard);
+        }
+        
+        // Load bulletin board from Google Sheet API
+        loadBulletinFromSheet(customerData.planChoice);
+        
+      } catch (error) {
+        console.error('Error during page initialization:', error);
+        // Even if there's an error, try to load the bulletin board
+        try {
+          loadBulletinFromSheet(customerData.planChoice);
+        } catch (e) {
+          console.error('Error loading bulletin board:', e);
+        }
       }
-      
-      // Populate contract details
-      document.getElementById('planChoice').textContent = customerData.planChoice + " Plan";
-      document.getElementById('numBooks').textContent = customerData.numBooks + " books";
-      document.getElementById('numPages').textContent = customerData.numPages + " pages";
-      document.getElementById('bindingType').textContent = customerData.bindingType;
-      document.getElementById('bookSize').textContent = customerData.bookSize;
-      document.getElementById('paperWeight').textContent = customerData.paperWeight;
-      document.getElementById('submitDateBanner').textContent = customerData.submitDate;
-      document.getElementById('deliveryDate').textContent = customerData.deliveryDate;
-      document.getElementById('basePricePerBook').textContent = "$" + customerData.basePricePerBook.toFixed(2);
-      document.getElementById('multiYearTerm').textContent = customerData.multiYearTerm;
-      document.getElementById('shipping').textContent = customerData.shipping;
-      
-      // Optional items
-      document.getElementById('optionalItem1').textContent = 
-        customerData.optionalItem1 + " ($" + customerData.optionalItem1Price.toFixed(2) + "/book)";
-      document.getElementById('optionalItem2').textContent = 
-        customerData.optionalItem2 + " ($" + customerData.optionalItem2Price.toFixed(2) + "/book)";
-      document.getElementById('optionalItem3').textContent = 
-        customerData.optionalItem3 + " ($" + customerData.optionalItem3Price.toFixed(2) + "/book)";
-      
-      // Show invoice if URL exists
-      if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
-        document.getElementById('invoiceContent').innerHTML = '<a href="' + customerData.invoiceUrl + '" target="_blank" style="color: #14b8a6; font-weight: 600; text-decoration: none;">📥 View/Download Invoice</a>';
-      }
-      
-      // Update Quick Links
-      document.getElementById('softwareLoginCard').href = config.url;
-      document.getElementById('softwareLoginCard').querySelector('.quick-link-title').textContent = "Login to " + config.displayName;
-      document.getElementById('customerHomeCard').href = config.customerPage;
-      document.getElementById('storefrontCard').href = config.storefrontForm;
-      
-      // Populate submission links
-      const submissionContainer = document.getElementById('submissionLinks');
-      submissionContainer.innerHTML = '';
-      config.submissionLinks.forEach(link => {
-        const card = document.createElement('a');
-        card.href = link.url;
-        card.target = '_blank';
-        card.className = 'quick-link-card';
-        card.innerHTML = `
-          <div class="quick-link-icon">${link.icon}</div>
-          <div class="quick-link-title">${link.title}</div>
-          <div class="quick-link-desc">Step-by-step submission guide</div>
-        `;
-        submissionContainer.appendChild(card);
-      });
-      
-      // Populate support contacts
-      const supportContainer = document.getElementById('supportContacts');
-      supportContainer.innerHTML = '';
-      const supportCard = document.createElement('div');
-      supportCard.className = 'contact-card';
-      supportCard.innerHTML = `
-        <div class="contact-title">${config.displayName} Technical Support</div>
-        <div class="contact-info">
-          Phone: ${config.techSupport.link ? 
-            '<a href="' + config.techSupport.link + '" target="_blank">' + config.techSupport.phone + '</a>' : 
-            '<a href="tel:' + config.techSupport.phone.replace(/[^0-9]/g, '') + '">' + config.techSupport.phone + '</a>'
-          }<br>
-          ${config.techSupport.email ? 'Email: <a href="mailto:' + config.techSupport.email + '">' + config.techSupport.email + '</a>' : ''}
-        </div>
-      `;
-      supportContainer.appendChild(supportCard);
-      
-      // Load bulletin board from Google Sheet
-      loadBulletinFromSheet(customerData.planChoice);
     }
 
     // Initialize on page load
