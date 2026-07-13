@@ -1063,10 +1063,14 @@
   </div>
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    // Get URL parameters for testing different software types
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPlanChoice = urlParams.get('planChoice');
+    
     // Customer data - In real implementation, this comes from HubSpot API
     const customerData = {
       schoolName: "Lincoln High School 2026",
-      planChoice: "Pictavo", // Options: Pictavo, YBLive, Canva
+      planChoice: urlPlanChoice || "Pictavo", // Options: Pictavo, YBLive, Canva - reads from URL param or defaults to Pictavo
       numBooks: 250,
       numPages: 48,
       bindingType: "Sewn Hardcover",
