@@ -1,9 +1,5 @@
 {
   "name": "yearbooklife-portal",
   "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'No build needed'"
-  },
-  "dependencies": {}
+  "private": true
 }
