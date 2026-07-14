@@ -647,7 +647,7 @@
             <a href="https://www.pictavo.com/" target="_blank" class="software-link" id="softwareLink">
               🚀 Open Pictavo
             </a>
-            <div style="margin-top: 8px;">
+            <div style="margin-top: 8px;" id="activationLinkContainer">
               <a href="javascript:void(0)" onclick="showActivationModal()" style="color: #14b8a6; font-size: 13px; text-decoration: none; font-weight: 600;" id="activationLinkRequest">
                 🔑 Need Activation Link?
               </a>
@@ -832,7 +832,7 @@
             <div class="quick-link-desc">Complete the form to launch online sales</div>
           </a>
 
-          <a href="https://www.youtube.com/playlist?list=PLnlRG8JINc3UcLkk6LLX3O1wi7t50bjwO" target="_blank" class="quick-link-card" id="videoTutorialsCard">
+          <a href="javascript:void(0)" class="quick-link-card" id="videoTutorialsCard" onclick="handleVideoTutorials(event)">
             <div class="quick-link-icon">🎥</div>
             <div class="quick-link-title">Video Tutorials</div>
             <div class="quick-link-desc">Step-by-step video guides</div>
@@ -1119,13 +1119,14 @@
         url: 'https://www.yblive.net/YBLife1/yb/Public.jsp',
         displayName: 'YBLive',
         techSupport: {
-          phone: '888-680-0143, option 2',
+          phone: '888-680-0143',
           email: 'yblive@yearbooklife.com'
         },
         customerPage: 'https://yearbooklife.com/yblive-customer-home-page/',
         storefrontForm: 'https://yearbooklife.com/yblive-ecommercestorefront-information-sheet/',
         submissionLinks: [
-          { title: 'How to Submit Your YBLive Yearbook', url: 'https://yearbooklife.com/wp-content/uploads/2024/04/23-24-How-to-Submit-your-YBLive-Yearbook.pdf', icon: '📗' }
+          { title: 'How to Submit Your YBLive Yearbook', url: 'https://yearbooklife.com/wp-content/uploads/2024/04/23-24-How-to-Submit-your-YBLive-Yearbook.pdf', icon: '📗' },
+          { title: 'YBLive Video Tutorials', url: 'https://www.youtube.com/playlist?list=PLnlRG8JINc3WVNfySPoNeOajKf6mpWVrp', icon: '🎥' }
         ]
       },
       'Canva': {
@@ -1177,6 +1178,13 @@
           }
           const canvaCoverDimensions = document.getElementById('canvaCoverDimensions');
           if (canvaCoverDimensions) canvaCoverDimensions.textContent = customerData.canvaCoverDimensions;
+          // Hide activation link for Canva
+          const activationLinkContainer = document.getElementById('activationLinkContainer');
+          if (activationLinkContainer) activationLinkContainer.style.display = 'none';
+        } else {
+          // Show activation link for Pictavo and YBLive
+          const activationLinkContainer = document.getElementById('activationLinkContainer');
+          if (activationLinkContainer) activationLinkContainer.style.display = 'block';
         }
         
         // Helper function for safe text updates
@@ -1617,6 +1625,20 @@
       if (!isOpen) {
         answer.classList.add('open');
         element.classList.add('active');
+      }
+    }
+
+    function handleVideoTutorials(event) {
+      event.preventDefault();
+      if (customerData.planChoice === 'Canva') {
+        alert('Coming Soon!');
+      } else {
+        // For Pictavo and YBLive, open their respective video tutorial links
+        const config = softwareConfig[customerData.planChoice];
+        const videoLink = config.submissionLinks.find(link => link.title.includes('Video') || link.icon === '🎥');
+        if (videoLink) {
+          window.open(videoLink.url, '_blank');
+        }
       }
     }
 
