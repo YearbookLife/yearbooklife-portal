@@ -626,7 +626,6 @@
         </p>
 
         <div id="bulletinPosts" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px;">
-          <!-- Bulletin posts will be loaded from Google Sheet via API -->
           <p style="grid-column: 1/-1; text-align: center; color: #64748b;">Loading announcements...</p>
         </div>
 
@@ -784,7 +783,7 @@
           </div>
         </div>
 
-        <button class="btn" onclick="refreshData()">
+        <button class="btn" id="refreshBtn" onclick="refreshData(this)">
           🔄 Refresh Contract Data
         </button>
       </div>
@@ -1103,7 +1102,8 @@
       }
 
       try {
-        const response = await fetch(`/api/hubspot-deal?dealId=${dealId}`);
+        // cache-buster so refresh always gets fresh data
+        const response = await fetch(`/api/hubspot-deal?dealId=${dealId}&t=${Date.now()}`);
         
         if (!response.ok) {
           console.error('Failed to fetch deal from HubSpot:', response.statusText);
@@ -1128,7 +1128,6 @@
 
     // Initialize the portal
     async function initPortal() {
-      // If dealId is provided, fetch from HubSpot
       if (dealId) {
         const success = await fetchDealFromHubSpot();
         if (!success) {
@@ -1136,13 +1135,11 @@
         }
       }
       
-      // Initialize the page with customer data
       initializePage();
       loadBlogPosts();
       checkUrgentPopup();
     }
 
-    // Call initPortal when DOM is ready
     document.addEventListener('DOMContentLoaded', initPortal);
 
     // Software configuration
@@ -1196,11 +1193,9 @@
       try {
         const config = softwareConfig[customerData.planChoice] || softwareConfig['Pictavo'];
         
-        // Set school name
         const schoolNameEl = document.getElementById('schoolName');
         if (schoolNameEl) schoolNameEl.textContent = customerData.schoolName;
         
-        // Set software info
         const softwareNameEl = document.getElementById('softwareName');
         if (softwareNameEl) softwareNameEl.textContent = config.displayName;
         const linkElement = document.getElementById('softwareLink');
@@ -1225,22 +1220,20 @@
           }
           const canvaCoverDimensions = document.getElementById('canvaCoverDimensions');
           if (canvaCoverDimensions) canvaCoverDimensions.textContent = customerData.canvaCoverDimensions;
-          // Hide activation link for Canva
           const activationLinkContainer = document.getElementById('activationLinkContainer');
           if (activationLinkContainer) activationLinkContainer.style.display = 'none';
         } else {
-          // Show activation link for Pictavo and YBLive
+          const canvaSection = document.getElementById('canvaSection');
+          if (canvaSection) canvaSection.style.display = 'none';
           const activationLinkContainer = document.getElementById('activationLinkContainer');
           if (activationLinkContainer) activationLinkContainer.style.display = 'block';
         }
         
-        // Helper function for safe text updates
         const safeSetText = (elementId, text) => {
           const el = document.getElementById(elementId);
           if (el) el.textContent = text;
         };
         
-        // Populate contract details
         safeSetText('numBooks', customerData.numBooks + " books");
         safeSetText('numPages', customerData.numPages + " pages");
         safeSetText('bindingType', customerData.bindingType);
@@ -1268,9 +1261,13 @@
         });
         
         // Show invoice if URL exists
-        if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
-          const invoiceContent = document.getElementById('invoiceContent');
-          if (invoiceContent) invoiceContent.innerHTML = '<a href="' + customerData.invoiceUrl + '" target="_blank" style="color: #14b8a6; font-weight: 600; text-decoration: none;">📥 View/Download Invoice</a>';
+        const invoiceContent = document.getElementById('invoiceContent');
+        if (invoiceContent) {
+          if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
+            invoiceContent.innerHTML = '<a href="' + customerData.invoiceUrl + '" target="_blank" style="color: #14b8a6; font-weight: 600; text-decoration: none;">📥 View/Download Invoice</a>';
+          } else {
+            invoiceContent.innerHTML = '<span style="color: #64748b; font-style: italic;">Your invoice will be generated upon submission of your yearbook project.</span>';
+          }
         }
         
         // Update Quick Links
@@ -1324,12 +1321,10 @@
           supportContainer.appendChild(supportCard);
         }
         
-        // Load bulletin board from Google Sheet API
         loadBulletinFromSheet(customerData.planChoice);
         
       } catch (error) {
         console.error('Error during page initialization:', error);
-        // Even if there's an error, try to load the bulletin board
         try {
           loadBulletinFromSheet(customerData.planChoice);
         } catch (e) {
@@ -1338,10 +1333,38 @@
       }
     }
 
+    // REAL refresh — actually re-fetches from HubSpot and redraws the page
+    async function refreshData(btn) {
+      if (!btn) btn = document.getElementById('refreshBtn');
+      const originalText = '🔄 Refresh Contract Data';
+
+      if (!dealId) {
+        btn.textContent = '⚠️ No deal ID in link';
+        setTimeout(() => { btn.textContent = originalText; }, 2500);
+        return;
+      }
+
+      btn.textContent = '🔄 Refreshing...';
+      btn.disabled = true;
+
+      const success = await fetchDealFromHubSpot();
+
+      if (success) {
+        initializePage();
+        btn.textContent = '✓ Contract Data Updated!';
+      } else {
+        btn.textContent = '⚠️ Could not refresh — try again';
+      }
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 2000);
+    }
+
     // Load blog posts
     async function loadBlogPosts() {
       try {
-        // Using RSS2JSON API to bypass CORS restrictions
         const response = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://yearbooklife.com/feed/');
         const data = await response.json();
         
@@ -1353,26 +1376,22 @@
           return;
         }
         
-        // Show latest 6 posts
         data.items.slice(0, 6).forEach(post => {
           const title = post.title || 'Untitled Post';
           const link = post.link || '#';
           const description = post.description || '';
           const pubDate = post.pubDate ? new Date(post.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
           
-          // Get thumbnail, but filter out Google-hosted images
           let thumbnail = post.thumbnail || post.enclosure?.link || '';
           if (thumbnail && (thumbnail.includes('google.com') || thumbnail.includes('googleusercontent.com') || thumbnail.includes('gstatic.com'))) {
-            thumbnail = ''; // Skip Google-hosted images
+            thumbnail = '';
           }
           
-          // Also check description for embedded images and remove Google-hosted ones
           let cleanDescription = description;
           if (description) {
             cleanDescription = description.replace(/<img[^>]*src=["'][^"']*(?:google\.com|googleusercontent\.com|gstatic\.com)[^"']*["'][^>]*>/gi, '');
           }
           
-          // Strip HTML from description and limit length
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = cleanDescription;
           const excerpt = (tempDiv.textContent || tempDiv.innerText || '').substring(0, 150) + '...';
@@ -1416,7 +1435,6 @@
         const data = await response.json();
         const notices = data.notices || [];
         
-        // Create color map
         const colorMap = {
           'yellow': { bg: 'linear-gradient(135deg, #fef08a 0%, #fde047 100%)', text: '#854d0e', darkText: '#713f12', icon: '📌' },
           'blue': { bg: 'linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%)', text: '#1e40af', darkText: '#1e3a8a', icon: '📌' },
@@ -1426,7 +1444,6 @@
         const bulletinContainer = document.getElementById('bulletinPosts');
         bulletinContainer.innerHTML = '';
         
-        // Display notices from API response
         notices.forEach(notice => {
           const colors = colorMap[notice.color.toLowerCase()] || colorMap.yellow;
           
@@ -1444,7 +1461,6 @@
           bulletinContainer.innerHTML += postHTML;
         });
         
-        // If no posts loaded, show message
         if (notices.length === 0) {
           bulletinContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #64748b;">No announcements at this time.</p>';
         }
@@ -1472,20 +1488,6 @@
       });
     }
 
-    function refreshData() {
-      const btn = event.target;
-      btn.textContent = '🔄 Refreshing...';
-      btn.disabled = true;
-      
-      setTimeout(() => {
-        btn.textContent = '✓ Contract Data Updated!';
-        setTimeout(() => {
-          btn.textContent = '🔄 Refresh Contract Data';
-          btn.disabled = false;
-        }, 1500);
-      }, 1000);
-    }
-
     function updateSpecFields() {
       const changeType = document.getElementById('changeType').value;
       const dynamicFields = document.getElementById('dynamicSpecFields');
@@ -1496,7 +1498,6 @@
       
       let html = '';
       
-      // Hide all conditional elements first
       specNotesGroup.style.display = 'none';
       booksPagesCostWarning.style.display = 'none';
       deliveryDisclaimer.style.display = 'none';
@@ -1825,7 +1826,6 @@
       document.body.appendChild(overlay);
     }
 
-    // Check for popup message after data loads
     function checkUrgentPopup() {
       if (customerData.urgentMessage && customerData.urgentMessage.trim() !== '') {
         setTimeout(() => {
