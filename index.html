@@ -1139,7 +1139,8 @@
         customerPage: 'https://yearbooklife.com/canva-customer-home-page/',
         storefrontForm: 'https://yearbooklife.com/yearbooklife-canva-program-storefront-information-sheet/',
         submissionLinks: [
-          { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' }
+          { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' },
+          { title: 'Canva Video Tutorials', url: 'https://www.youtube.com/playlist?list=PLX-8ZS70hEuU', icon: '🎥' }
         ]
       }
     };
@@ -1630,15 +1631,11 @@
 
     function handleVideoTutorials(event) {
       event.preventDefault();
-      if (customerData.planChoice === 'Canva') {
-        alert('Coming Soon!');
-      } else {
-        // For Pictavo and YBLive, open their respective video tutorial links
-        const config = softwareConfig[customerData.planChoice];
-        const videoLink = config.submissionLinks.find(link => link.title.includes('Video') || link.icon === '🎥');
-        if (videoLink) {
-          window.open(videoLink.url, '_blank');
-        }
+      // For all software types, open their respective video tutorial links
+      const config = softwareConfig[customerData.planChoice];
+      const videoLink = config.submissionLinks.find(link => link.title.includes('Video') || link.icon === '🎥');
+      if (videoLink) {
+        window.open(videoLink.url, '_blank');
       }
     }
 
