@@ -40,8 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!dealResponse.ok) {
       return res.status(dealResponse.status).json({
-        error: `HubSpot API error: ${dealResponse.statusText}`,
-        details: await dealResponse.text()
+        error: `HubSpot API error: ${dealResponse.statusText}`
       });
     }
 
@@ -75,8 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       canvaCoverDimensions: properties.canvacoverdimensions || '',
       urgentMessage: properties.urgentmessage || '',
       messageTitle: properties.messagetitle || '',
-      messageType: properties.messagetype || 'info',
-      _raw: properties
+      messageType: properties.messagetype || 'info'
     };
 
     return res.status(200).json({ success: true, data: customerData });
