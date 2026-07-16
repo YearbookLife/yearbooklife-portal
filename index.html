@@ -1063,71 +1063,87 @@
   </div>
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-    // Get URL parameters for testing different software types
+    // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    let urlPlanChoice = urlParams.get('planChoice');
+    const dealId = urlParams.get('dealId');
     
-    // Normalize plan choice to handle variations
-    function normalizePlanChoice(choice) {
-      if (!choice) return null;
-      
-      const normalized = choice.trim().toUpperCase();
-      
-      // Pictavo variations
-      if (normalized === 'PICTAVO' || normalized === 'PICTAVO (DP)') {
-        return 'Pictavo';
-      }
-      
-      // Canva variations
-      if (normalized === 'CANVA (DP)' || normalized === 'CANVA (PI)') {
-        return 'Canva';
-      }
-      
-      // YBLive
-      if (normalized === 'YBLIVE') {
-        return 'YBLive';
-      }
-      
-      // Invalid plan choice
-      return null;
-    }
-    
-    // Normalize the URL plan choice if provided
-    if (urlPlanChoice) {
-      urlPlanChoice = normalizePlanChoice(urlPlanChoice);
-    }
-    
-    // Customer data - In real implementation, this comes from HubSpot API
-    const customerData = {
-      schoolName: "Lincoln High School 2026",
-      planChoice: urlPlanChoice || "Pictavo", // Options: Pictavo, YBLive, Canva - reads from URL param or defaults to Pictavo
-      numBooks: 250,
-      numPages: 48,
-      bindingType: "Sewn Hardcover",
-      bookSize: '8.5" x 11"',
-      paperWeight: "100# Gloss",
-      submitDate: "March 15, 2026",
-      deliveryDate: "May 20, 2026",
-      basePricePerBook: 28.50,
-      multiYearTerm: "3 Years",
-      shipping: "Free Ground Shipping",
-      optionalItem1: "Personalization",
-      optionalItem1Price: 3.00,
-      optionalItem2: "Extra Pages",
-      optionalItem2Price: 1.50,
-      optionalItem3: "Premium Cover",
-      optionalItem3Price: 2.00,
-      // Invoice (will come from HubSpot API - link from Invoices section on deal)
-      invoiceUrl: "", // Leave empty if no invoice, or add URL like "https://..."
-      // Canva-specific fields
-      canvaGoogleDrive: "https://drive.google.com/drive/folders/example",
-      canvaSubmissionForm: "https://forms.example.com/canva-submission",
-      canvaCoverDimensions: '8.5" x 11" with 0.125" bleed',
-      // POPUP MESSAGE SYSTEM - These will eventually come from HubSpot
-      urgentMessage: "Your yearbook proof has been reviewed and is ready for your final approval! Please check your email for the proof link and review by March 1st.",
-      messageTitle: "Your Proof is Ready!",
-      messageType: "success" // Options: info, warning, urgent, success
+    // Placeholder for customer data - will be filled from HubSpot API
+    let customerData = {
+      schoolName: "Loading...",
+      planChoice: "Pictavo",
+      numBooks: 0,
+      numPages: 0,
+      bindingType: "N/A",
+      bookSize: "N/A",
+      paperWeight: "N/A",
+      submitDate: "TBD",
+      deliveryDate: "TBD",
+      basePricePerBook: 0,
+      multiYearTerm: "N/A",
+      shipping: "N/A",
+      optionalItem1: "",
+      optionalItem1Price: 0,
+      optionalItem2: "",
+      optionalItem2Price: 0,
+      optionalItem3: "",
+      optionalItem3Price: 0,
+      invoiceUrl: "",
+      canvaGoogleDrive: "",
+      canvaSubmissionForm: "",
+      canvaCoverDimensions: "",
+      urgentMessage: "",
+      messageTitle: "",
+      messageType: "info"
     };
+
+    // Function to fetch deal data from HubSpot
+    async function fetchDealFromHubSpot() {
+      if (!dealId) {
+        console.error('No dealId provided in URL');
+        return false;
+      }
+
+      try {
+        const response = await fetch(`/api/hubspot-deal?dealId=${dealId}`);
+        
+        if (!response.ok) {
+          console.error('Failed to fetch deal from HubSpot:', response.statusText);
+          return false;
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          customerData = result.data;
+          console.log('Successfully loaded deal data from HubSpot:', customerData);
+          return true;
+        } else {
+          console.error('HubSpot API error:', result.error);
+          return false;
+        }
+      } catch (error) {
+        console.error('Error fetching HubSpot data:', error);
+        return false;
+      }
+    }
+
+    // Initialize the portal
+    async function initPortal() {
+      // If dealId is provided, fetch from HubSpot
+      if (dealId) {
+        const success = await fetchDealFromHubSpot();
+        if (!success) {
+          console.warn('Failed to load HubSpot data, using test data');
+          // Fall back to test data or show error
+        }
+      }
+      
+      // Initialize the page with customer data
+      initializePage();
+    }
+
+    // Call initPortal when DOM is ready
+    document.addEventListener('DOMContentLoaded', initPortal);
 
     // Software configuration
     const softwareConfig = {
