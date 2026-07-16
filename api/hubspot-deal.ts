@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price_per_book,optional_item_2,optional_item_2_price_per_book,optional_item_3,optional_item_3_price_per_book,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgentmessage,messagetitle,messagetype`,
+      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgentmessage,messagetitle,messagetype`,
       {
         method: 'GET',
         headers: {
@@ -64,11 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       multiYearTerm: properties.multi_year_term || 'N/A',
       shipping: properties.contract_shipping || 'N/A',
       optionalItem1: properties.optional_item_1 || '',
-      optionalItem1Price: parseFloat(properties.optional_item_1_price_per_book || '0'),
+      optionalItem1Price: parseFloat(properties.optional_item_1_price || '0'),
       optionalItem2: properties.optional_item_2 || '',
-      optionalItem2Price: parseFloat(properties.optional_item_2_price_per_book || '0'),
+      optionalItem2Price: parseFloat(properties.optional_item_2_price || '0'),
       optionalItem3: properties.optional_item_3 || '',
-      optionalItem3Price: parseFloat(properties.optional_item_3_price_per_book || '0'),
+      optionalItem3Price: parseFloat(properties.optional_item_3_price || '0'),
       invoiceUrl: properties.invoiceurl || '',
       canvaGoogleDrive: properties.canvagoogledrive || '',
       canvaSubmissionForm: properties.canvasubmissionform || '',
