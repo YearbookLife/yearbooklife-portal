@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,planchoice,submit_date,final_number_of_books,final_number_of_pages,final_binding_type,book_size,paper_weight,delivery_est,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price_per_book,optional_item_2,optional_item_2_price_per_book,optional_item_3,optional_item_3_price_per_book,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgentmessage,messagetitle,messagetype`,
+      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price_per_book,optional_item_2,optional_item_2_price_per_book,optional_item_3,optional_item_3_price_per_book,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgentmessage,messagetitle,messagetype`,
       {
         method: 'GET',
         headers: {
@@ -52,14 +52,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       dealId: dealId,
       dealName: properties.dealname || '',
       schoolName: properties.dealname || 'School Name',
-      planChoice: normalizePlanChoice(properties.planchoice),
-      numBooks: parseInt(properties.final_number_of_books || '0'),
-      numPages: parseInt(properties.final_number_of_pages || '0'),
+      planChoice: normalizePlanChoice(properties.plan_choice),
+      numBooks: parseInt(properties.final___of_books || '0'),
+      numPages: parseInt(properties.final___of_pages || '0'),
       bindingType: properties.final_binding_type || 'N/A',
       bookSize: properties.book_size || 'N/A',
       paperWeight: properties.paper_weight || 'N/A',
       submitDate: properties.submit_date || 'TBD',
-      deliveryDate: properties.delivery_est || 'TBD',
+      deliveryDate: properties.delivery_est_ || 'TBD',
       basePricePerBook: parseFloat(properties.final_base_price_per_book || '0'),
       multiYearTerm: properties.multi_year_term || 'N/A',
       shipping: properties.contract_shipping || 'N/A',
