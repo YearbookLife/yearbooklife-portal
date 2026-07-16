@@ -6,11 +6,16 @@
       "use": "@vercel/static"
     },
     {
-      "src": "api/index.ts",
+      "src": "api/*.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
+    {
+      "src": "/api/hubspot-deal",
+      "dest": "/api/hubspot-deal.ts",
+      "methods": ["GET", "POST", "OPTIONS"]
+    },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
