@@ -20,24 +20,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'dealId parameter required' });
     }
 
-    // HubSpot credentials from environment variables
-    // These should be set in Vercel environment variables
-    const appId = process.env.HUBSPOT_APP_ID || '45949358';
-    const clientId = process.env.HUBSPOT_CLIENT_ID || '83bfee0d-3a2d-4f03-87ad-cab1590a86d6';
-    const clientSecret = process.env.HUBSPOT_CLIENT_SECRET || '39023239-37cc-4702-8ad9-4d69398ba5c2';
-    const accountId = process.env.HUBSPOT_ACCOUNT_ID || '20864988';
+    // HubSpot access token from environment variable
     const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
 
-    // If we have an access token, use it. Otherwise we'll need to implement OAuth
     if (!accessToken) {
       return res.status(400).json({ 
         error: 'HubSpot access token not configured. Please set HUBSPOT_ACCESS_TOKEN environment variable.' 
       });
     }
 
-    // Fetch deal data from HubSpot
+    // Fetch deal data from HubSpot with all required properties
     const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,dealstage,amount,closedate,pipeline,hs_object_id&limit=100`,
+      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,planchoice,submit_date,final_number_of_books,final_number_of_pages,final_binding_type,book_size,paper_weight,delivery_est,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price_per_book,optional_item_2,optional_item_2_price_per_book,optional_item_3,optional_item_3_price_per_book,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgentmessage,messagetitle,messagetype`,
       {
         method: 'GET',
         headers: {
@@ -55,32 +49,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const dealData = await dealResponse.json();
-
-    // Extract properties
     const properties = dealData.properties || {};
-    
+
     // Map HubSpot properties to our customer data format
     const customerData = {
       dealId: dealId,
       dealName: properties.dealname?.value || '',
-      schoolName: properties.schoolname?.value || 'School Name',
+      schoolName: properties.dealname?.value || 'School Name', // School name IS the deal name
       planChoice: normalizePlanChoice(properties.planchoice?.value),
-      numBooks: parseInt(properties.numbooks?.value || '0'),
-      numPages: parseInt(properties.numpages?.value || '0'),
-      bindingType: properties.bindingtype?.value || 'N/A',
-      bookSize: properties.booksize?.value || 'N/A',
-      paperWeight: properties.paperweight?.value || 'N/A',
-      submitDate: properties.submitdate?.value || 'TBD',
-      deliveryDate: properties.deliverydate?.value || 'TBD',
-      basePricePerBook: parseFloat(properties.basepriceperboo?.value || '0'),
-      multiYearTerm: properties.multiyearterm?.value || 'N/A',
-      shipping: properties.shipping?.value || 'N/A',
-      optionalItem1: properties.optionalitem1?.value || '',
-      optionalItem1Price: parseFloat(properties.optionalitem1price?.value || '0'),
-      optionalItem2: properties.optionalitem2?.value || '',
-      optionalItem2Price: parseFloat(properties.optionalitem2price?.value || '0'),
-      optionalItem3: properties.optionalitem3?.value || '',
-      optionalItem3Price: parseFloat(properties.optionalitem3price?.value || '0'),
+      numBooks: parseInt(properties.final_number_of_books?.value || '0'),
+      numPages: parseInt(properties.final_number_of_pages?.value || '0'),
+      bindingType: properties.final_binding_type?.value || 'N/A',
+      bookSize: properties.book_size?.value || 'N/A',
+      paperWeight: properties.paper_weight?.value || 'N/A',
+      submitDate: properties.submit_date?.value || 'TBD',
+      deliveryDate: properties.delivery_est?.value || 'TBD',
+      basePricePerBook: parseFloat(properties.final_base_price_per_book?.value || '0'),
+      multiYearTerm: properties.multi_year_term?.value || 'N/A',
+      shipping: properties.contract_shipping?.value || 'N/A',
+      optionalItem1: properties.optional_item_1?.value || '',
+      optionalItem1Price: parseFloat(properties.optional_item_1_price_per_book?.value || '0'),
+      optionalItem2: properties.optional_item_2?.value || '',
+      optionalItem2Price: parseFloat(properties.optional_item_2_price_per_book?.value || '0'),
+      optionalItem3: properties.optional_item_3?.value || '',
+      optionalItem3Price: parseFloat(properties.optional_item_3_price_per_book?.value || '0'),
       invoiceUrl: properties.invoiceurl?.value || '',
       canvaGoogleDrive: properties.canvagoogledrive?.value || '',
       canvaSubmissionForm: properties.canvasubmissionform?.value || '',
