@@ -1065,7 +1065,37 @@
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Get URL parameters for testing different software types
     const urlParams = new URLSearchParams(window.location.search);
-    const urlPlanChoice = urlParams.get('planChoice');
+    let urlPlanChoice = urlParams.get('planChoice');
+    
+    // Normalize plan choice to handle variations
+    function normalizePlanChoice(choice) {
+      if (!choice) return null;
+      
+      const normalized = choice.trim().toUpperCase();
+      
+      // Pictavo variations
+      if (normalized === 'PICTAVO' || normalized === 'PICTAVO (DP)') {
+        return 'Pictavo';
+      }
+      
+      // Canva variations
+      if (normalized === 'CANVA (DP)' || normalized === 'CANVA (PI)') {
+        return 'Canva';
+      }
+      
+      // YBLive
+      if (normalized === 'YBLIVE') {
+        return 'YBLive';
+      }
+      
+      // Invalid plan choice
+      return null;
+    }
+    
+    // Normalize the URL plan choice if provided
+    if (urlPlanChoice) {
+      urlPlanChoice = normalizePlanChoice(urlPlanChoice);
+    }
     
     // Customer data - In real implementation, this comes from HubSpot API
     const customerData = {
