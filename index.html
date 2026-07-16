@@ -759,21 +759,20 @@
 
           <div class="info-card">
             <div class="info-label">Optional Item 1</div>
-            <div class="info-value" id="optionalItem1">Personalization ($3.00/book)</div>
+            <div class="info-value" id="optionalItem1"></div>
           </div>
 
           <div class="info-card">
             <div class="info-label">Optional Item 2</div>
-            <div class="info-value" id="optionalItem2">Extra Pages ($1.50/book)</div>
+            <div class="info-value" id="optionalItem2"></div>
           </div>
 
           <div class="info-card">
             <div class="info-label">Optional Item 3</div>
-            <div class="info-value" id="optionalItem3">Premium Cover ($2.00/book)</div>
+            <div class="info-value" id="optionalItem3"></div>
           </div>
         </div>
 
-        <!-- Invoice Section -->
         <!-- Invoice Section -->
         <div style="margin-top: 30px;">
           <h3 style="color: #0f172a; font-size: 18px; font-weight: 700; margin-bottom: 15px;">📄 Invoice</h3>
@@ -791,7 +790,7 @@
       </div>
 
 
-      <!-- Contract Details Tab -->
+      <!-- Quick Links Tab -->
       <div class="tab-content">
         <h2 class="section-title">Quick Access Links</h2>
         
@@ -917,7 +916,7 @@
         </div>
 
         <div id="kbResults">
-          <div class="faq-item">
+          <div class="faq-item kb-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
               How do I submit my yearbook for printing?
             </div>
@@ -928,7 +927,7 @@
             </div>
           </div>
 
-          <div class="faq-item">
+          <div class="faq-item kb-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
               When will I receive my proof?
             </div>
@@ -939,7 +938,7 @@
             </div>
           </div>
 
-          <div class="faq-item">
+          <div class="faq-item kb-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
               Can I add more books to my order?
             </div>
@@ -950,7 +949,7 @@
             </div>
           </div>
 
-          <div class="faq-item">
+          <div class="faq-item kb-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
               What photo resolution do you require?
             </div>
@@ -961,7 +960,7 @@
             </div>
           </div>
 
-          <div class="faq-item">
+          <div class="faq-item kb-item">
             <div class="faq-question" onclick="toggleFAQ(this)">
               How do I set up my online storefront?
             </div>
@@ -1062,7 +1061,7 @@
     <button class="chatbot-button" onclick="alert('Chatbot would open here. In the real implementation, this would connect to your chat service.')"></button>
   </div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  <script>
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const dealId = urlParams.get('dealId');
@@ -1134,12 +1133,13 @@
         const success = await fetchDealFromHubSpot();
         if (!success) {
           console.warn('Failed to load HubSpot data, using test data');
-          // Fall back to test data or show error
         }
       }
       
       // Initialize the page with customer data
       initializePage();
+      loadBlogPosts();
+      checkUrgentPopup();
     }
 
     // Call initPortal when DOM is ready
@@ -1194,7 +1194,7 @@
     // Initialize page with customer data
     function initializePage() {
       try {
-        const config = softwareConfig[customerData.planChoice];
+        const config = softwareConfig[customerData.planChoice] || softwareConfig['Pictavo'];
         
         // Set school name
         const schoolNameEl = document.getElementById('schoolName');
@@ -1241,7 +1241,6 @@
         };
         
         // Populate contract details
-        safeSetText('planChoice', customerData.planChoice + " Plan");
         safeSetText('numBooks', customerData.numBooks + " books");
         safeSetText('numPages', customerData.numPages + " pages");
         safeSetText('bindingType', customerData.bindingType);
@@ -1249,20 +1248,24 @@
         safeSetText('paperWeight', customerData.paperWeight);
         safeSetText('submitDateBanner', customerData.submitDate);
         safeSetText('deliveryDate', customerData.deliveryDate);
-        safeSetText('basePricePerBook', "$" + customerData.basePricePerBook.toFixed(2));
+        safeSetText('basePricePerBook', "$" + Number(customerData.basePricePerBook || 0).toFixed(2));
         safeSetText('multiYearTerm', customerData.multiYearTerm);
         safeSetText('shipping', customerData.shipping);
         
-        // Optional items
-        if (customerData.optionalItem1) {
-          safeSetText('optionalItem1', customerData.optionalItem1 + " ($" + customerData.optionalItem1Price.toFixed(2) + "/book)");
-        }
-        if (customerData.optionalItem2) {
-          safeSetText('optionalItem2', customerData.optionalItem2 + " ($" + customerData.optionalItem2Price.toFixed(2) + "/book)");
-        }
-        if (customerData.optionalItem3) {
-          safeSetText('optionalItem3', customerData.optionalItem3 + " ($" + customerData.optionalItem3Price.toFixed(2) + "/book)");
-        }
+        // Optional items — hide the box entirely if HubSpot has nothing in it
+        [1, 2, 3].forEach(n => {
+          const el = document.getElementById('optionalItem' + n);
+          if (!el) return;
+          const card = el.closest('.info-card');
+          const name = customerData['optionalItem' + n];
+          const price = customerData['optionalItem' + n + 'Price'];
+          if (name && String(name).trim() !== '') {
+            el.textContent = name + " ($" + Number(price || 0).toFixed(2) + "/book)";
+            if (card) card.style.display = '';
+          } else {
+            if (card) card.style.display = 'none';
+          }
+        });
         
         // Show invoice if URL exists
         if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
@@ -1335,10 +1338,6 @@
       }
     }
 
-    // Initialize on page load
-    window.addEventListener('DOMContentLoaded', initializePage);
-    loadBlogPosts();
-
     // Load blog posts
     async function loadBlogPosts() {
       try {
@@ -1370,7 +1369,6 @@
           // Also check description for embedded images and remove Google-hosted ones
           let cleanDescription = description;
           if (description) {
-            // Remove any img tags with Google-hosted src
             cleanDescription = description.replace(/<img[^>]*src=["'][^"']*(?:google\.com|googleusercontent\.com|gstatic\.com)[^"']*["'][^>]*>/gi, '');
           }
           
@@ -1408,7 +1406,6 @@
     // Load bulletin board from Google Sheet
     async function loadBulletinFromSheet(platform) {
       try {
-        // Call our Vercel API function instead of directly fetching from Google Sheets
         const response = await fetch(`/api/bulletin?platform=${platform}`);
         
         if (!response.ok) {
@@ -1453,7 +1450,6 @@
         }
       } catch (error) {
         console.error('Error loading bulletin from sheet:', error);
-        // Show fallback message
         const bulletinContainer = document.getElementById('bulletinPosts');
         if (bulletinContainer) {
           bulletinContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #64748b;">Unable to load announcements at this time.</p>';
@@ -1525,7 +1521,6 @@
           </div>
         `;
         booksPagesCostWarning.style.display = 'block';
-        // Reset submit button to require checkbox
         const checkbox = document.getElementById('costAcknowledgement');
         if (checkbox && !checkbox.checked) {
           submitBtn.disabled = true;
@@ -1552,19 +1547,16 @@
           </div>
         `;
         deliveryDisclaimer.style.display = 'block';
-        // Enable submit button for delivery changes
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
         submitBtn.style.cursor = 'pointer';
       } else if (changeType === 'other') {
         html = '';
         specNotesGroup.style.display = 'block';
-        // Enable submit button for other changes
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
         submitBtn.style.cursor = 'pointer';
       } else {
-        // No selection - disable submit
         submitBtn.disabled = true;
         submitBtn.style.opacity = '0.5';
         submitBtn.style.cursor = 'not-allowed';
@@ -1599,18 +1591,16 @@
       const changeType = document.getElementById('changeType').value;
       const specNotes = document.getElementById('specNotes').value;
       
-      // Build email body based on what was changed
       let emailBody = `School: ${customerData.schoolName}\n\n`;
       
-      if (changeType === 'books') {
+      if (changeType === 'books_pages') {
         const newBooks = document.getElementById('newBooks')?.value;
+        const newPages = document.getElementById('newPages')?.value;
         if (newBooks) {
           emailBody += `Number of Books:\n`;
           emailBody += `  Current: ${customerData.numBooks}\n`;
           emailBody += `  Requested: ${newBooks}\n\n`;
         }
-      } else if (changeType === 'pages') {
-        const newPages = document.getElementById('newPages')?.value;
         if (newPages) {
           emailBody += `Number of Pages:\n`;
           emailBody += `  Current: ${customerData.numPages}\n`;
@@ -1641,7 +1631,6 @@
       document.getElementById('dynamicSpecFields').innerHTML = '';
       document.getElementById('specNotesGroup').style.display = 'none';
       
-      // Reset checkbox and disable button
       const checkbox = document.getElementById('costAcknowledgement');
       const submitBtn = document.getElementById('submitSpecBtn');
       if (checkbox) checkbox.checked = false;
@@ -1677,8 +1666,7 @@
 
     function handleVideoTutorials(event) {
       event.preventDefault();
-      // For all software types, open their respective video tutorial links
-      const config = softwareConfig[customerData.planChoice];
+      const config = softwareConfig[customerData.planChoice] || softwareConfig['Pictavo'];
       const videoLink = config.submissionLinks.find(link => link.title.includes('Video') || link.icon === '🎥');
       if (videoLink) {
         window.open(videoLink.url, '_blank');
@@ -1704,10 +1692,8 @@
       // In production, this would send email to production@yearbooklife.com
       console.log(`Activation link requested for ${firstName} ${lastName} at ${customerData.schoolName}`);
       
-      // Show success message
       document.getElementById('activationSuccess').style.display = 'block';
       
-      // Clear form
       setTimeout(() => {
         closeActivationModal();
       }, 4000);
@@ -1839,8 +1825,8 @@
       document.body.appendChild(overlay);
     }
 
-    // Check for popup message on page load
-    window.addEventListener('DOMContentLoaded', function() {
+    // Check for popup message after data loads
+    function checkUrgentPopup() {
       if (customerData.urgentMessage && customerData.urgentMessage.trim() !== '') {
         setTimeout(() => {
           showUrgentPopup({
@@ -1850,7 +1836,7 @@
           });
         }, 800);
       }
-    });
+    }
   </script>
 </body>
 </html>
