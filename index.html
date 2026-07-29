@@ -1153,6 +1153,7 @@
       'Pictavo': {
         url: 'https://www.pictavo.com/',
         displayName: 'Pictavo',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLnlRG8JINc3UcLkk6LLX3O1wi7t50bjwO',
         techSupport: {
           phone: '1-800-290-0036, option 2',
           email: 'answers@pictavo.com'
@@ -1167,6 +1168,7 @@
       'YBLive': {
         url: 'https://www.yblive.net/YBLife1/yb/Public.jsp',
         displayName: 'YBLive',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLnlRG8JINc3WVNfySPoNeOajKf6mpWVrp',
         techSupport: {
           phone: '888-680-0143',
           email: 'yblive@yearbooklife.com'
@@ -1181,6 +1183,7 @@
       'Canva': {
         url: 'https://www.canva.com/',
         displayName: 'Canva',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLX-8ZS70hEuU',
         techSupport: {
           phone: 'Visit Canva Help Center',
           link: 'https://www.canva.com/help/contact-us'
@@ -1699,11 +1702,9 @@
 
     function handleVideoTutorials(event) {
       event.preventDefault();
-      // For all software types, open their respective video tutorial links
-      const config = softwareConfig[customerData.planChoice];
-      const videoLink = config.submissionLinks.find(link => link.title.includes('Video') || link.icon === '🎥');
-      if (videoLink) {
-        window.open(videoLink.url, '_blank');
+      const config = softwareConfig[customerData.planChoice] || softwareConfig['Pictavo'];
+      if (config.videoTutorials) {
+        window.open(config.videoTutorials, '_blank');
       }
     }
 
