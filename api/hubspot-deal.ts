@@ -97,16 +97,18 @@ function normalizePlanChoice(choice: string | undefined): string {
 
   const normalized = choice.trim().toUpperCase();
 
-  if (normalized === 'PICTAVO' || normalized === 'PICTAVO (DP)') {
-    return 'Pictavo';
-  }
-
-  if (normalized === 'CANVA (DP)' || normalized === 'CANVA (PI)') {
+  // Match on keywords so any variation routes correctly:
+  // e.g. "Canva (DP)", "Canva (PI)", "Canva-Print (DP)", "Canva-Print (PI)" all -> Canva
+  if (normalized.includes('CANVA')) {
     return 'Canva';
   }
 
-  if (normalized === 'YBLIVE') {
+  if (normalized.includes('YBLIVE') || normalized.includes('YB LIVE')) {
     return 'YBLive';
+  }
+
+  if (normalized.includes('PICTAVO')) {
+    return 'Pictavo';
   }
 
   return 'Pictavo';
