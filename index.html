@@ -759,17 +759,17 @@
 
           <div class="info-card">
             <div class="info-label">Optional Item 1</div>
-            <div class="info-value" id="optionalItem1">Personalization ($3.00/book)</div>
+            <div class="info-value" id="optionalItem1"></div>
           </div>
 
           <div class="info-card">
             <div class="info-label">Optional Item 2</div>
-            <div class="info-value" id="optionalItem2">Extra Pages ($1.50/book)</div>
+            <div class="info-value" id="optionalItem2"></div>
           </div>
 
           <div class="info-card">
             <div class="info-label">Optional Item 3</div>
-            <div class="info-value" id="optionalItem3">Premium Cover ($2.00/book)</div>
+            <div class="info-value" id="optionalItem3"></div>
           </div>
         </div>
 
@@ -785,7 +785,7 @@
           </div>
         </div>
 
-        <button class="btn" onclick="refreshData()">
+        <button class="btn" id="refreshBtn" onclick="refreshData(this)">
           🔄 Refresh Contract Data
         </button>
       </div>
@@ -1140,6 +1140,9 @@
       
       // Initialize the page with customer data
       initializePage();
+
+      // Now that HubSpot data is loaded, check whether to show the popup
+      checkUrgentPopup();
     }
 
     // Call initPortal when DOM is ready
@@ -1253,16 +1256,20 @@
         safeSetText('multiYearTerm', customerData.multiYearTerm);
         safeSetText('shipping', customerData.shipping);
         
-        // Optional items
-        if (customerData.optionalItem1) {
-          safeSetText('optionalItem1', customerData.optionalItem1 + " ($" + customerData.optionalItem1Price.toFixed(2) + "/book)");
-        }
-        if (customerData.optionalItem2) {
-          safeSetText('optionalItem2', customerData.optionalItem2 + " ($" + customerData.optionalItem2Price.toFixed(2) + "/book)");
-        }
-        if (customerData.optionalItem3) {
-          safeSetText('optionalItem3', customerData.optionalItem3 + " ($" + customerData.optionalItem3Price.toFixed(2) + "/book)");
-        }
+        // Optional items — hide the box entirely if HubSpot has nothing in it
+        [1, 2, 3].forEach(n => {
+          const el = document.getElementById('optionalItem' + n);
+          if (!el) return;
+          const card = el.closest('.info-card');
+          const name = customerData['optionalItem' + n];
+          const price = customerData['optionalItem' + n + 'Price'];
+          if (name && String(name).trim() !== '') {
+            el.textContent = name + " ($" + Number(price || 0).toFixed(2) + "/book)";
+            if (card) card.style.display = '';
+          } else {
+            if (card) card.style.display = 'none';
+          }
+        });
         
         // Show invoice if URL exists
         if (customerData.invoiceUrl && customerData.invoiceUrl.trim() !== '') {
@@ -1476,18 +1483,33 @@
       });
     }
 
-    function refreshData() {
-      const btn = event.target;
+    // REAL refresh — actually re-fetches from HubSpot and redraws the page
+    async function refreshData(btn) {
+      if (!btn) btn = document.getElementById('refreshBtn');
+      const originalText = '🔄 Refresh Contract Data';
+
+      if (!dealId) {
+        btn.textContent = '⚠️ No deal ID in link';
+        setTimeout(() => { btn.textContent = originalText; }, 2500);
+        return;
+      }
+
       btn.textContent = '🔄 Refreshing...';
       btn.disabled = true;
-      
-      setTimeout(() => {
+
+      const success = await fetchDealFromHubSpot();
+
+      if (success) {
+        initializePage();
         btn.textContent = '✓ Contract Data Updated!';
-        setTimeout(() => {
-          btn.textContent = '🔄 Refresh Contract Data';
-          btn.disabled = false;
-        }, 1500);
-      }, 1000);
+      } else {
+        btn.textContent = '⚠️ Could not refresh — try again';
+      }
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 2000);
     }
 
     function updateSpecFields() {
@@ -1751,15 +1773,16 @@
       let iconColor = '#14b8a6';
       let buttonColor = 'linear-gradient(135deg, #14b8a6 0%, #0891b2 100%)';
       
-      if (options.type === 'warning') {
+      const typeKey = String(options.type || 'info').trim().toLowerCase();
+      if (typeKey === 'warning') {
         icon = '⚠️';
         iconColor = '#f59e0b';
         buttonColor = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-      } else if (options.type === 'urgent') {
+      } else if (typeKey === 'urgent') {
         icon = '🔴';
         iconColor = '#ef4444';
         buttonColor = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-      } else if (options.type === 'success') {
+      } else if (typeKey === 'success') {
         icon = '✅';
         iconColor = '#10b981';
         buttonColor = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
@@ -1800,7 +1823,7 @@
           <p style="color: #475569; font-size: 17px; line-height: 1.7; white-space: pre-wrap;">${options.message}</p>
         </div>
         <button 
-          onclick="document.getElementById('urgentPopupOverlay').remove()" 
+          onclick="acknowledgeUrgentPopup()" 
           style="
             width: 100%;
             background: ${buttonColor};
@@ -1839,18 +1862,49 @@
       document.body.appendChild(overlay);
     }
 
-    // Check for popup message on page load
-    window.addEventListener('DOMContentLoaded', function() {
-      if (customerData.urgentMessage && customerData.urgentMessage.trim() !== '') {
-        setTimeout(() => {
-          showUrgentPopup({
-            title: customerData.messageTitle || 'Important Notice',
-            message: customerData.urgentMessage,
-            type: customerData.messageType || 'info'
-          });
-        }, 800);
+    // Show the popup only once per unique message, remembered in this browser
+    function checkUrgentPopup() {
+      if (!customerData.urgentMessage || customerData.urgentMessage.trim() === '') return;
+
+      // Build a key that changes whenever the message text/title changes,
+      // so a NEW message from HubSpot will pop again even if an old one was dismissed.
+      const msgKey = 'yblPopupSeen:' + (dealId || 'nodeal') + ':' +
+        (customerData.messageTitle || '') + '|' + customerData.urgentMessage;
+
+      let alreadySeen = false;
+      try {
+        alreadySeen = localStorage.getItem(msgKey) === '1';
+      } catch (e) {
+        // localStorage blocked (e.g. preview iframe) — just show it
+        alreadySeen = false;
       }
-    });
+
+      if (alreadySeen) return;
+
+      // stash the current key so the Got It button can mark it seen
+      window._currentPopupKey = msgKey;
+
+      setTimeout(() => {
+        showUrgentPopup({
+          title: customerData.messageTitle || 'Important Notice',
+          message: customerData.urgentMessage,
+          type: customerData.messageType || 'info'
+        });
+      }, 800);
+    }
+
+    // Called when the customer clicks "Got It" — remember it, then close
+    function acknowledgeUrgentPopup() {
+      try {
+        if (window._currentPopupKey) {
+          localStorage.setItem(window._currentPopupKey, '1');
+        }
+      } catch (e) {
+        // ignore if storage blocked
+      }
+      const overlay = document.getElementById('urgentPopupOverlay');
+      if (overlay) overlay.remove();
+    }
   </script>
 </body>
 </html>
