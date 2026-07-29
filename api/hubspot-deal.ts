@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,urgent_portal_message,portal_message_title,portal_message_type`,
+      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canvagoogledrive,canvasubmissionform,canvacoverdimensions,cover_width,cover_height,cover_gap,urgent_portal_message,portal_message_title,portal_message_type`,
       {
         method: 'GET',
         headers: {
@@ -72,6 +72,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       canvaGoogleDrive: properties.canvagoogledrive || '',
       canvaSubmissionForm: properties.canvasubmissionform || '',
       canvaCoverDimensions: properties.canvacoverdimensions || '',
+      coverWidth: properties.cover_width || '',
+      coverHeight: properties.cover_height || '',
+      coverGap: properties.cover_gap || '',
       urgentMessage: properties.urgent_portal_message || '',
       messageTitle: properties.portal_message_title || '',
       messageType: properties.portal_message_type || 'info'
