@@ -1778,21 +1778,58 @@
       document.getElementById('activationSuccess').style.display = 'none';
     }
 
-    function submitActivationRequest(e) {
+    async function submitActivationRequest(e) {
       e.preventDefault();
-      const firstName = document.getElementById('activationFirstName').value;
-      const lastName = document.getElementById('activationLastName').value;
-      
-      // In production, this would send email to production@yearbooklife.com
-      console.log(`Activation link requested for ${firstName} ${lastName} at ${customerData.schoolName}`);
-      
-      // Show success message
-      document.getElementById('activationSuccess').style.display = 'block';
-      
-      // Clear form
-      setTimeout(() => {
-        closeActivationModal();
-      }, 4000);
+      const firstName = (document.getElementById('activationFirstName').value || '').trim();
+      const lastName = (document.getElementById('activationLastName').value || '').trim();
+
+      const message =
+        `ACTIVATION LINK REQUEST\n` +
+        `School: ${customerData.schoolName}\n` +
+        `Deal ID: ${customerData.dealId || dealId || 'N/A'}\n` +
+        `Software: ${customerData.planChoice}\n\n` +
+        `${firstName} ${lastName} has requested an activation link.`;
+
+      const HUBSPOT_PORTAL_ID = '20864988';
+      const HUBSPOT_FORM_ID = 'c5d27bbb-4e8c-4a8c-a537-46dca60c30c3';
+      const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
+
+      const payload = {
+        fields: [
+          { name: 'firstname', value: firstName },
+          { name: 'lastname', value: lastName },
+          { name: 'email', value: customerData.email || 'portal-request@yearbooklife.com' },
+          { name: 'message', value: message }
+        ]
+      };
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending...'; }
+
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error('HubSpot submit failed: ' + resp.status);
+
+        // Show success message
+        document.getElementById('activationSuccess').style.display = 'block';
+
+        setTimeout(() => {
+          closeActivationModal();
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit Request'; }
+        }, 4000);
+
+      } catch (err) {
+        console.error('Activation request error:', err);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Could not send — try again';
+          setTimeout(() => { submitBtn.textContent = 'Submit Request'; }, 3000);
+        }
+      }
     }
 
     function filterKB() {
