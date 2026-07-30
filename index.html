@@ -828,6 +828,7 @@
         <button class="btn" id="refreshBtn" onclick="refreshData(this)">
           🔄 Refresh Contract Data
         </button>
+        <div id="lastUpdated" style="font-size: 12px; color: #94a3b8; margin-top: 8px; font-style: italic;"></div>
       </div>
 
 
@@ -1233,6 +1234,15 @@
     };
 
     // Initialize page with customer data
+    // Stamp the "last updated" line with the current date and time
+    function setLastUpdated() {
+      const el = document.getElementById('lastUpdated');
+      if (!el) return;
+      const now = new Date();
+      const opts = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+      el.textContent = 'Last updated: ' + now.toLocaleString('en-US', opts);
+    }
+
     function initializePage() {
       try {
         const config = softwareConfig[customerData.planChoice];
@@ -1297,6 +1307,7 @@
         safeSetText('basePricePerBook', "$" + customerData.basePricePerBook.toFixed(2));
         safeSetText('multiYearTerm', customerData.multiYearTerm);
         safeSetText('shipping', customerData.shipping);
+        setLastUpdated();
 
         // Shipping Address bubble — build the address, hide the whole card if all parts are empty
         (function() {
