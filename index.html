@@ -674,7 +674,7 @@
               </div>
             </form>
             <div id="activationSuccess" style="display: none; margin-top: 20px; padding: 20px; background: #d1fae5; border: 2px solid #10b981; border-radius: 8px; color: #065f46;">
-              ✓ Please look for an email from production@yearbooklife.com within the next 24 hours with your activation link.
+              ✓ Please look for an email from <span id="activationEmailAddr">production@yearbooklife.com</span> within the next 24 hours with your activation link.
             </div>
           </div>
         </div>
@@ -919,7 +919,7 @@
           </div>
 
           <div id="deliveryDisclaimer" style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #78350f; line-height: 1.6; display: none;">
-            <strong>Please Note:</strong> Your delivery window is based off of the date you submit your book to us, depending on your binding type. We will send a confirmation with your new submission and delivery window based off of the information above. We will reach out if we have any questions.
+            <strong>Please Note:</strong> Your delivery estimate is based off of the date you submit your book to us, depending on your binding type. We will send a confirmation with your new submission and delivery estimate based off of the information above. We will reach out if we have any questions.
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
@@ -1584,7 +1584,7 @@
             <input type="text" value="${customerData.submitDate}" readonly style="background: #f1f5f9;">
           </div>
           <div class="form-group">
-            <label>Current Delivery Window</label>
+            <label>Current Delivery Estimate</label>
             <input type="text" value="${customerData.deliveryDate}" readonly style="background: #f1f5f9;">
           </div>
           <div class="form-group">
@@ -1666,7 +1666,7 @@
         if (newSubmission) {
           details += `Submission Date:\n  Current: ${customerData.submitDate}\n  Requested: ${newSubmission}\n\n`;
         }
-        details += `(Current Delivery Window shown to customer: ${customerData.deliveryDate})\n`;
+        details += `(Current Delivery Estimate shown to customer: ${customerData.deliveryDate})\n`;
       } else if (changeType === 'other') {
         details += `Details:\n${specNotes}\n`;
       }
@@ -1768,6 +1768,13 @@
     }
 
     function showActivationModal() {
+      // Set the contact email based on which software the customer has
+      const emailSpan = document.getElementById('activationEmailAddr');
+      if (emailSpan) {
+        emailSpan.textContent = (customerData.planChoice === 'Pictavo')
+          ? 'Hello@pictavo.com'
+          : 'production@yearbooklife.com';
+      }
       document.getElementById('activationModal').style.display = 'flex';
     }
 
