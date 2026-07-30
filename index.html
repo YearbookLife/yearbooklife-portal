@@ -93,6 +93,23 @@
       color: #14b8a6;
     }
 
+    /* Gentle highlight for the Spec Change tab so it stands out a touch */
+    .tab.tab-highlight {
+      background: #fff7ed;              /* very soft warm tint */
+      color: #ea580c;                  /* muted orange text */
+      border-bottom-color: #fed7aa;    /* faint underline hint */
+    }
+    .tab.tab-highlight:hover {
+      background: #ffedd5;             /* slightly deeper on hover */
+      color: #c2410c;
+    }
+    /* When it's the active tab, behave like the others (clean white) */
+    .tab.tab-highlight.active {
+      background: white;
+      color: #14b8a6;
+      border-bottom-color: #14b8a6;
+    }
+
     .tab.active {
       background: white;
       color: #14b8a6;
@@ -610,7 +627,7 @@
       <button class="tab active" onclick="switchTab(0)">📋 Bulletin Board</button>
       <button class="tab" onclick="switchTab(1)">📊 Contract Details</button>
       <button class="tab" onclick="switchTab(2)">🔗 Quick Links</button>
-      <button class="tab" onclick="switchTab(3)">✏️ Request Spec Change</button>
+      <button class="tab tab-highlight" onclick="switchTab(3)">✏️ Request Spec Change</button>
       <button class="tab" onclick="switchTab(4)">❓ Knowledge Base</button>
       <button class="tab" onclick="switchTab(5)">📞 Contact & Support</button>
       <button class="tab" onclick="switchTab(6)">📝 Blog</button>
