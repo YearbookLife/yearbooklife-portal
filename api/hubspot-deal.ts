@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canva_google_drive,canva_submission_form_link,canvacoverdimensions,cover_width,cover_height,cover_gap,urgent_portal_message,portal_message_title,portal_message_type`,
+      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,books_shipping_address,books_shipping_address_2,books_shipping_city,books_shipping_state,books_shipping_zip,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canva_google_drive,canva_submission_form_link,canvacoverdimensions,cover_width,cover_height,cover_gap,urgent_portal_message,portal_message_title,portal_message_type`,
       {
         method: 'GET',
         headers: {
@@ -62,6 +62,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       basePricePerBook: parseFloat(properties.final_base_price_per_book || '0'),
       multiYearTerm: properties.multi_year_term || 'N/A',
       shipping: properties.contract_shipping || 'N/A',
+      shipAddress: properties.books_shipping_address || '',
+      shipAddress2: properties.books_shipping_address_2 || '',
+      shipCity: properties.books_shipping_city || '',
+      shipState: properties.books_shipping_state || '',
+      shipZip: properties.books_shipping_zip || '',
       optionalItem1: properties.optional_item_1 || '',
       optionalItem1Price: parseFloat(properties.optional_item_1_price || '0'),
       optionalItem2: properties.optional_item_2 || '',
