@@ -899,7 +899,7 @@
             <select id="changeType" onchange="updateSpecFields()">
               <option value="">Select specification to change...</option>
               <option value="books_pages">Number of Books/Pages</option>
-              <option value="delivery">Submission/Delivery Window</option>
+              <option value="delivery">Submission Date</option>
               <option value="other">Other Specification</option>
             </select>
           </div>
@@ -1591,10 +1591,6 @@
             <label for="newSubmission">Requested New Submission Date</label>
             <input type="date" id="newSubmission">
           </div>
-          <div class="form-group">
-            <label for="newDelivery">Requested New Delivery Window</label>
-            <input type="date" id="newDelivery">
-          </div>
         `;
         deliveryDisclaimer.style.display = 'block';
       } else if (changeType === 'other') {
@@ -1667,13 +1663,10 @@
         details += `Customer acknowledged that book/page changes may affect pricing.\n`;
       } else if (changeType === 'delivery') {
         const newSubmission = document.getElementById('newSubmission')?.value;
-        const newDelivery = document.getElementById('newDelivery')?.value;
         if (newSubmission) {
           details += `Submission Date:\n  Current: ${customerData.submitDate}\n  Requested: ${newSubmission}\n\n`;
         }
-        if (newDelivery) {
-          details += `Delivery Window:\n  Current: ${customerData.deliveryDate}\n  Requested: ${newDelivery}\n\n`;
-        }
+        details += `(Current Delivery Window shown to customer: ${customerData.deliveryDate})\n`;
       } else if (changeType === 'other') {
         details += `Details:\n${specNotes}\n`;
       }
