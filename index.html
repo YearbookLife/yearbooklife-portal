@@ -922,7 +922,18 @@
             <strong>Please Note:</strong> Your delivery window is based off of the date you submit your book to us, depending on your binding type. We will send a confirmation with your new submission and delivery window based off of the information above. We will reach out if we have any questions.
           </div>
 
-          <button type="submit" class="btn" id="submitSpecBtn" disabled style="opacity: 0.5; cursor: not-allowed;">📨 Submit Spec Change Request</button>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="specFirstName">First Name <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="specFirstName" placeholder="Your first name" oninput="updateSpecSubmitState()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="specLastName">Last Name <span style="color: #ef4444;">*</span></label>
+              <input type="text" id="specLastName" placeholder="Your last name" oninput="updateSpecSubmitState()">
+            </div>
+          </div>
+
+          <button type="submit" class="btn" id="submitSpecBtn" disabled style="opacity: 0.5; cursor: not-allowed; margin-top: 20px;">📨 Submit Spec Change Request</button>
         </form>
       </div>
 
@@ -1538,15 +1549,14 @@
       const specNotesGroup = document.getElementById('specNotesGroup');
       const booksPagesCostWarning = document.getElementById('booksPagesCostWarning');
       const deliveryDisclaimer = document.getElementById('deliveryDisclaimer');
-      const submitBtn = document.getElementById('submitSpecBtn');
-      
+
       let html = '';
-      
+
       // Hide all conditional elements first
       specNotesGroup.style.display = 'none';
       booksPagesCostWarning.style.display = 'none';
       deliveryDisclaimer.style.display = 'none';
-      
+
       if (changeType === 'books_pages') {
         html = `
           <div class="form-group">
@@ -1555,7 +1565,7 @@
           </div>
           <div class="form-group">
             <label for="newBooks">Requested New Number of Books</label>
-            <input type="number" id="newBooks" min="1" placeholder="Enter new number of books">
+            <input type="number" id="newBooks" min="1" placeholder="Enter new number of books" oninput="updateSpecSubmitState()">
           </div>
           <div class="form-group">
             <label>Current Number of Pages</label>
@@ -1563,17 +1573,10 @@
           </div>
           <div class="form-group">
             <label for="newPages">Requested New Number of Pages <span style="font-size: 12px; color: #64748b; font-style: italic;">(pages must be added in groups of 4)</span></label>
-            <input type="number" id="newPages" min="1" step="4" placeholder="Enter new number of pages">
+            <input type="number" id="newPages" min="1" step="4" placeholder="Enter new number of pages" oninput="updateSpecSubmitState()">
           </div>
         `;
         booksPagesCostWarning.style.display = 'block';
-        // Reset submit button to require checkbox
-        const checkbox = document.getElementById('costAcknowledgement');
-        if (checkbox && !checkbox.checked) {
-          submitBtn.disabled = true;
-          submitBtn.style.opacity = '0.5';
-          submitBtn.style.cursor = 'not-allowed';
-        }
       } else if (changeType === 'delivery') {
         html = `
           <div class="form-group">
@@ -1594,110 +1597,160 @@
           </div>
         `;
         deliveryDisclaimer.style.display = 'block';
-        // Enable submit button for delivery changes
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
       } else if (changeType === 'other') {
         html = '';
         specNotesGroup.style.display = 'block';
-        // Enable submit button for other changes
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = '1';
-        submitBtn.style.cursor = 'pointer';
-      } else {
-        // No selection - disable submit
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
       }
-      
+
       dynamicFields.innerHTML = html;
+      updateSpecSubmitState();
     }
 
-    // Enable submit button when checkbox is checked
+    // Central check: decides whether the Submit button is enabled.
+    // Requires first + last name always, plus the per-type rule.
+    function updateSpecSubmitState() {
+      const submitBtn = document.getElementById('submitSpecBtn');
+      if (!submitBtn) return;
+
+      const changeType = document.getElementById('changeType').value;
+      const firstName = (document.getElementById('specFirstName')?.value || '').trim();
+      const lastName = (document.getElementById('specLastName')?.value || '').trim();
+
+      let ok = true;
+
+      // Must choose a change type
+      if (!changeType) ok = false;
+
+      // Must fill in first + last name
+      if (!firstName || !lastName) ok = false;
+
+      // Books/pages also requires the cost acknowledgement checkbox
+      if (changeType === 'books_pages') {
+        const checkbox = document.getElementById('costAcknowledgement');
+        if (!checkbox || !checkbox.checked) ok = false;
+      }
+
+      submitBtn.disabled = !ok;
+      submitBtn.style.opacity = ok ? '1' : '0.5';
+      submitBtn.style.cursor = ok ? 'pointer' : 'not-allowed';
+    }
+
+    // Keep the checkbox wired to the same central check
     document.addEventListener('DOMContentLoaded', function() {
       const checkbox = document.getElementById('costAcknowledgement');
-      const submitBtn = document.getElementById('submitSpecBtn');
-      
-      if (checkbox && submitBtn) {
-        checkbox.addEventListener('change', function() {
-          if (this.checked) {
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = '1';
-            submitBtn.style.cursor = 'pointer';
-          } else {
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.5';
-            submitBtn.style.cursor = 'not-allowed';
-          }
-        });
+      if (checkbox) {
+        checkbox.addEventListener('change', updateSpecSubmitState);
       }
     });
 
-    function submitSpecChange(e) {
+    async function submitSpecChange(e) {
       e.preventDefault();
-      
+
+      const submitBtn = document.getElementById('submitSpecBtn');
       const changeType = document.getElementById('changeType').value;
-      const specNotes = document.getElementById('specNotes').value;
-      
-      // Build email body based on what was changed
-      let emailBody = `School: ${customerData.schoolName}\n\n`;
-      
-      if (changeType === 'books') {
+      const specNotes = (document.getElementById('specNotes')?.value || '');
+      const firstName = (document.getElementById('specFirstName')?.value || '').trim();
+      const lastName = (document.getElementById('specLastName')?.value || '').trim();
+
+      // Build a readable details block for the production team
+      let details = `Change Type: ${changeType}\n\n`;
+
+      if (changeType === 'books_pages') {
         const newBooks = document.getElementById('newBooks')?.value;
-        if (newBooks) {
-          emailBody += `Number of Books:\n`;
-          emailBody += `  Current: ${customerData.numBooks}\n`;
-          emailBody += `  Requested: ${newBooks}\n\n`;
-        }
-      } else if (changeType === 'pages') {
         const newPages = document.getElementById('newPages')?.value;
-        if (newPages) {
-          emailBody += `Number of Pages:\n`;
-          emailBody += `  Current: ${customerData.numPages}\n`;
-          emailBody += `  Requested: ${newPages}\n\n`;
+        if (newBooks) {
+          details += `Number of Books:\n  Current: ${customerData.numBooks}\n  Requested: ${newBooks}\n\n`;
         }
+        if (newPages) {
+          details += `Number of Pages:\n  Current: ${customerData.numPages}\n  Requested: ${newPages}\n\n`;
+        }
+        details += `Customer acknowledged that book/page changes may affect pricing.\n`;
       } else if (changeType === 'delivery') {
+        const newSubmission = document.getElementById('newSubmission')?.value;
         const newDelivery = document.getElementById('newDelivery')?.value;
+        if (newSubmission) {
+          details += `Submission Date:\n  Current: ${customerData.submitDate}\n  Requested: ${newSubmission}\n\n`;
+        }
         if (newDelivery) {
-          emailBody += `Delivery Date:\n`;
-          emailBody += `  Current: ${customerData.deliveryDate}\n`;
-          emailBody += `  Requested: ${newDelivery}\n\n`;
+          details += `Delivery Window:\n  Current: ${customerData.deliveryDate}\n  Requested: ${newDelivery}\n\n`;
         }
       } else if (changeType === 'other') {
-        emailBody += `Other Specification Change:\n`;
-        emailBody += `${specNotes}\n\n`;
+        details += `Details:\n${specNotes}\n`;
       }
-      
-      emailBody += `Customer acknowledged that book/page changes may affect pricing.`;
-      
-      // In production, this would send to production@yearbooklife.com
-      console.log('Email would be sent to production@yearbooklife.com:');
-      console.log(emailBody);
-      
-      const successMessage = document.getElementById('successMessage');
-      successMessage.classList.add('show');
-      
-      e.target.reset();
-      document.getElementById('dynamicSpecFields').innerHTML = '';
-      document.getElementById('specNotesGroup').style.display = 'none';
-      
-      // Reset checkbox and disable button
-      const checkbox = document.getElementById('costAcknowledgement');
-      const submitBtn = document.getElementById('submitSpecBtn');
-      if (checkbox) checkbox.checked = false;
+
+      const message =
+        `Spec Change Request\n` +
+        `School: ${customerData.schoolName}\n` +
+        `Deal ID: ${customerData.dealId || dealId || 'N/A'}\n` +
+        `Software: ${customerData.planChoice}\n\n` +
+        details;
+
+      // Send to the HubSpot form (which emails production@yearbooklife.com)
+      const HUBSPOT_PORTAL_ID = '20864988';
+      const HUBSPOT_FORM_ID = 'c5d27bbb-4e8c-4a8c-a537-46dca60c30c3';
+      const endpoint = `https://api.hsforms.com/submissions/v3/integration/submit/${HUBSPOT_PORTAL_ID}/${HUBSPOT_FORM_ID}`;
+
+      const payload = {
+        fields: [
+          { name: 'firstname', value: firstName },
+          { name: 'lastname', value: lastName },
+          { name: 'email', value: customerData.email || '' },
+          { name: 'message', value: message }
+        ],
+        context: {
+          pageUri: window.location.href,
+          pageName: 'YearbookLife Portal - Spec Change'
+        }
+      };
+
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
+        submitBtn.textContent = '📨 Sending...';
       }
-      
-      setTimeout(() => {
-        successMessage.classList.remove('show');
-      }, 5000);
-      
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          throw new Error('HubSpot form submit failed: ' + resp.status);
+        }
+
+        // Success UI
+        const successMessage = document.getElementById('successMessage');
+        if (successMessage) successMessage.classList.add('show');
+
+        // Reset the form
+        e.target.reset();
+        document.getElementById('dynamicSpecFields').innerHTML = '';
+        document.getElementById('specNotesGroup').style.display = 'none';
+        const checkbox = document.getElementById('costAcknowledgement');
+        if (checkbox) checkbox.checked = false;
+
+        if (submitBtn) submitBtn.textContent = '📨 Submit Spec Change Request';
+        updateSpecSubmitState();
+
+        setTimeout(() => {
+          if (successMessage) successMessage.classList.remove('show');
+        }, 6000);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      } catch (err) {
+        console.error('Spec change submit error:', err);
+        if (submitBtn) {
+          submitBtn.textContent = '⚠️ Could not send — try again';
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+        }
+        setTimeout(() => {
+          if (submitBtn) submitBtn.textContent = '📨 Submit Spec Change Request';
+        }, 3000);
+      }
     }
 
     function toggleFAQ(element) {
