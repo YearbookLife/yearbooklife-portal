@@ -766,6 +766,11 @@
             <div class="info-label">📦 Shipping</div>
             <div class="info-value" id="shipping">Free Ground Shipping</div>
           </div>
+
+          <div class="info-card" id="shippingAddressCard" style="display: none;">
+            <div class="info-label">📍 Shipping Address</div>
+            <div class="info-value" id="shippingAddress" style="font-size: 16px; line-height: 1.5;"></div>
+          </div>
         </div>
 
         <h2 class="section-title">Pricing Details</h2>
@@ -1286,6 +1291,35 @@
         safeSetText('basePricePerBook', "$" + customerData.basePricePerBook.toFixed(2));
         safeSetText('multiYearTerm', customerData.multiYearTerm);
         safeSetText('shipping', customerData.shipping);
+
+        // Shipping Address bubble — build the address, hide the whole card if all parts are empty
+        (function() {
+          const card = document.getElementById('shippingAddressCard');
+          const target = document.getElementById('shippingAddress');
+          if (!card || !target) return;
+
+          const a1 = (customerData.shipAddress || '').trim();
+          const a2 = (customerData.shipAddress2 || '').trim();
+          const city = (customerData.shipCity || '').trim();
+          const state = (customerData.shipState || '').trim();
+          const zip = (customerData.shipZip || '').trim();
+
+          // Hide only if ALL fields are empty
+          if (!a1 && !a2 && !city && !state && !zip) {
+            card.style.display = 'none';
+            return;
+          }
+
+          // Build a normal-looking address, skipping any blank parts
+          const lines = [];
+          if (a1) lines.push(a1);
+          if (a2) lines.push(a2);
+          const cityStateZip = [city, state].filter(Boolean).join(', ') + (zip ? ' ' + zip : '');
+          if (cityStateZip.trim()) lines.push(cityStateZip.trim());
+
+          target.innerHTML = lines.join('<br>');
+          card.style.display = '';
+        })();
         
         // Optional items — hide the box entirely if HubSpot has nothing in it
         [1, 2, 3].forEach(n => {
