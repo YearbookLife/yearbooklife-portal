@@ -1045,9 +1045,6 @@
           <button class="btn" onclick="window.open('https://meetings.hubspot.com/yanet-spitler/round-robin', '_blank')">
             📅 Schedule a Webinar
           </button>
-          <button class="btn btn-secondary" onclick="alert('Chat widget would open here')">
-            💬 Start Live Chat
-          </button>
         </div>
       </div>
 
@@ -1075,10 +1072,7 @@
     </div>
   </div>
 
-  <!-- Chatbot -->
-  <div class="chatbot">
-    <button class="chatbot-button" onclick="alert('Chatbot would open here. In the real implementation, this would connect to your chat service.')"></button>
-  </div>
+  <!-- Chat is handled by the HubSpot chat widget, loaded via the embed code at the bottom of this page -->
 
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Get URL parameters
@@ -1930,5 +1924,8 @@
       if (overlay) overlay.remove();
     }
   </script>
+  <!-- Start of HubSpot Embed Code -->
+  <script type="text/javascript" id="hs-script-loader" async defer src="//js.hs-scripts.com/20864988.js"></script>
+  <!-- End of HubSpot Embed Code -->
 </body>
 </html>
