@@ -6,6 +6,10 @@
       "use": "@vercel/static"
     },
     {
+      "src": "login.html",
+      "use": "@vercel/static"
+    },
+    {
       "src": "api/*.ts",
       "use": "@vercel/node"
     }
@@ -14,12 +18,32 @@
     {
       "src": "/api/hubspot-deal",
       "dest": "/api/hubspot-deal.ts",
-      "methods": ["GET", "POST", "OPTIONS"]
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
+    {
+      "src": "/api/supabase-config",
+      "dest": "/api/supabase-config.ts",
+      "methods": [
+        "GET",
+        "OPTIONS"
+      ]
     },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
-      "methods": ["GET", "POST", "OPTIONS"]
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
+    {
+      "src": "/login",
+      "dest": "/login.html"
     },
     {
       "src": "/(.*)",
