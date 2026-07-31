@@ -31,9 +31,10 @@
     .logo-box {
       background: white;
       display: inline-block;
-      padding: 10px 22px;
+      padding: 12px 20px;
       border-radius: 12px;
       margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .logo-box .yb { font-size: 24px; font-weight: 700; color: #5f5e5a; }
     .logo-box .life { font-size: 24px; font-weight: 700; color: #14b8a6; }
@@ -78,8 +79,8 @@
 <body>
   <div class="login-card">
     <div class="login-header">
-      <div class="logo-box"><span class="yb">Yearbook</span><span class="life">Life</span></div>
-      <p>Customer Portal Login</p>
+      <div class="logo-box"><img src="https://yearbooklife.com/wp-content/uploads/2025/07/ybl-logo.png" alt="YearbookLife" style="height: 48px; width: auto; display: block;"></div>
+      <p>Customer Dashboard</p>
     </div>
     <div class="login-body">
       <div class="form-group">
@@ -91,6 +92,9 @@
         <input type="password" id="password" placeholder="Your password" autocomplete="current-password">
       </div>
       <button class="login-btn" id="loginBtn" onclick="doLogin()">Log In</button>
+      <div style="text-align: center; margin-top: 16px;">
+        <a href="javascript:void(0)" onclick="doForgotPassword()" style="color: #14b8a6; font-size: 14px; text-decoration: none; font-weight: 600;">Forgot password?</a>
+      </div>
       <div class="message" id="message"></div>
     </div>
   </div>
@@ -155,6 +159,29 @@
         showMessage('Something went wrong. Please try again.', 'error');
         btn.disabled = false;
         btn.textContent = 'Log In';
+      }
+    }
+
+    async function doForgotPassword() {
+      const email = document.getElementById('email').value.trim();
+      if (!email) {
+        showMessage('Enter your email above first, then click "Forgot password?"', 'info');
+        return;
+      }
+      if (!supabaseClient) {
+        showMessage('Still connecting — please wait a moment and try again.', 'info');
+        return;
+      }
+      try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+        if (error) {
+          showMessage(error.message || 'Could not send reset email. Please try again.', 'error');
+          return;
+        }
+        showMessage('If an account exists for that email, a password reset link is on its way. Check your inbox.', 'success');
+      } catch (err) {
+        console.error('Reset error:', err);
+        showMessage('Something went wrong sending the reset email. Please try again.', 'error');
       }
     }
 
