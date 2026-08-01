@@ -1,11 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Given a logged-in user's email, find the deal(s) where:
-//   - that email is an associated contact on the deal
-//   - that contact is tagged as Admin (Yearbook Title contains "Admin")
-//   - the deal has Portal Activated = Yes
-// Returns a list of active deals so the portal can route the user.
-
 const HS = 'https://api.hubapi.com';
 
 async function hs(path: string, token: string, options: any = {}) {
@@ -30,16 +24,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const debug: any = { steps: [] };
+
   try {
     const email = ((req.query.email as string) || '').trim().toLowerCase();
     const token = process.env.HUBSPOT_ACCESS_TOKEN;
+    const wantDebug = req.query.debug === '1';
 
-    if (!email) {
-      return res.status(400).json({ error: 'email parameter required' });
-    }
-    if (!token) {
-      return res.status(400).json({ error: 'HubSpot token not configured' });
-    }
+    if (!email) return res.status(400).json({ error: 'email parameter required' });
+    if (!token) return res.status(400).json({ error: 'HubSpot token not configured' });
 
     // 1) Find the contact by email
     const searchResp = await hs('/crm/v3/objects/contacts/search', token, {
@@ -55,34 +48,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!searchResp.ok) {
       const detail = await searchResp.text();
-      return res.status(searchResp.status).json({
-        error: 'Contact lookup failed', status: searchResp.status, detail
-      });
+      return res.status(searchResp.status).json({ error: 'Contact lookup failed', status: searchResp.status, detail });
     }
 
     const searchData = await searchResp.json();
     const contacts = searchData.results || [];
+    debug.steps.push({ step: 'contact_search', found: contacts.length, contacts: contacts.map((c: any) => ({ id: c.id, email: c.properties?.email, yearbook_title: c.properties?.yearbook_title })) });
 
     if (contacts.length === 0) {
-      // No contact with that email — no dashboards
-      return res.status(200).json({ deals: [] });
+      return res.status(200).json(wantDebug ? { deals: [], debug } : { deals: [] });
     }
 
-    // 2) For each matching contact, get their associated deals
     const activeDeals: any[] = [];
     const seenDealIds = new Set<string>();
 
     for (const contact of contacts) {
       const contactId = contact.id;
 
-      // Get deals associated with this contact
-      const assocResp = await hs(
-        `/crm/v3/objects/contacts/${contactId}/associations/deals`,
-        token
-      );
+      // Try the associations endpoint
+      const assocResp = await hs(`/crm/v3/objects/contacts/${contactId}/associations/deals`, token);
+      const assocRaw = await assocResp.text();
+      debug.steps.push({ step: 'associations', contactId, ok: assocResp.ok, status: assocResp.status, raw: assocRaw.substring(0, 500) });
+
       if (!assocResp.ok) continue;
 
-      const assocData = await assocResp.json();
+      let assocData: any = {};
+      try { assocData = JSON.parse(assocRaw); } catch (e) {}
       const dealRefs = assocData.results || [];
 
       for (const ref of dealRefs) {
@@ -90,31 +81,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!dealId || seenDealIds.has(String(dealId))) continue;
         seenDealIds.add(String(dealId));
 
-        // 3) Read the deal's portal_activated + name
-        const dealResp = await hs(
-          `/crm/v3/objects/deals/${dealId}?properties=dealname,portal_activated`,
-          token
-        );
-        if (!dealResp.ok) continue;
+        const dealResp = await hs(`/crm/v3/objects/deals/${dealId}?properties=dealname,portal_activated`, token);
+        if (!dealResp.ok) { debug.steps.push({ step: 'deal_read_fail', dealId, status: dealResp.status }); continue; }
 
         const deal = await dealResp.json();
         const props = deal.properties || {};
         const activated = String(props.portal_activated || '').trim().toLowerCase();
+        debug.steps.push({ step: 'deal_check', dealId, dealName: props.dealname, portal_activated_raw: props.portal_activated, normalized: activated });
 
         if (activated === 'yes') {
-          activeDeals.push({
-            dealId: String(dealId),
-            dealName: props.dealname || 'Your Yearbook'
-          });
+          activeDeals.push({ dealId: String(dealId), dealName: props.dealname || 'Your Yearbook' });
         }
       }
     }
 
-    return res.status(200).json({ deals: activeDeals });
+    return res.status(200).json(wantDebug ? { deals: activeDeals, debug } : { deals: activeDeals });
 
   } catch (error) {
     console.error('find-my-deals error:', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({ error: 'Lookup failed', detail: msg });
+    return res.status(500).json({ error: 'Lookup failed', detail: msg, debug });
   }
 }
