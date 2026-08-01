@@ -14,6 +14,21 @@ async function hs(path: string, token: string, options: any = {}) {
   return resp;
 }
 
+// Portal is "on" if the field is Yes / true (HubSpot stores this dropdown as "true")
+function isActivated(raw: any): boolean {
+  const v = String(raw || '').trim().toLowerCase();
+  return v === 'true' || v === 'yes';
+}
+
+// Is this contact tagged specifically as "Admin"?
+// Tags can be separated by commas or semicolons (e.g. "Admin, Payment Contact").
+// We match the exact tag "Admin" — NOT "Co-Admin" or anything that merely contains "admin".
+function isAdmin(yearbookTitle: any): boolean {
+  const raw = String(yearbookTitle || '');
+  const tags = raw.split(/[,;]/).map(function (t) { return t.trim().toLowerCase(); });
+  return tags.indexOf('admin') !== -1;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -34,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!email) return res.status(400).json({ error: 'email parameter required' });
     if (!token) return res.status(400).json({ error: 'HubSpot token not configured' });
 
-    // 1) Find the contact by email
+    // 1) Find contact(s) by email
     const searchResp = await hs('/crm/v3/objects/contacts/search', token, {
       method: 'POST',
       body: JSON.stringify({
@@ -53,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const searchData = await searchResp.json();
     const contacts = searchData.results || [];
-    debug.steps.push({ step: 'contact_search', found: contacts.length, contacts: contacts.map((c: any) => ({ id: c.id, email: c.properties?.email, yearbook_title: c.properties?.yearbook_title })) });
+    debug.steps.push({ step: 'contact_search', found: contacts.length });
 
     if (contacts.length === 0) {
       return res.status(200).json(wantDebug ? { deals: [], debug } : { deals: [] });
@@ -64,16 +79,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const contact of contacts) {
       const contactId = contact.id;
+      const contactIsAdmin = isAdmin(contact.properties?.yearbook_title);
 
-      // Try the associations endpoint
+      // Only Admin-tagged contacts unlock dashboards
+      if (!contactIsAdmin) {
+        debug.steps.push({ step: 'skip_non_admin', contactId, yearbook_title: contact.properties?.yearbook_title });
+        continue;
+      }
+
       const assocResp = await hs(`/crm/v3/objects/contacts/${contactId}/associations/deals`, token);
-      const assocRaw = await assocResp.text();
-      debug.steps.push({ step: 'associations', contactId, ok: assocResp.ok, status: assocResp.status, raw: assocRaw.substring(0, 500) });
+      if (!assocResp.ok) {
+        debug.steps.push({ step: 'assoc_fail', contactId, status: assocResp.status });
+        continue;
+      }
 
-      if (!assocResp.ok) continue;
-
-      let assocData: any = {};
-      try { assocData = JSON.parse(assocRaw); } catch (e) {}
+      const assocData = await assocResp.json();
       const dealRefs = assocData.results || [];
 
       for (const ref of dealRefs) {
@@ -82,14 +102,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         seenDealIds.add(String(dealId));
 
         const dealResp = await hs(`/crm/v3/objects/deals/${dealId}?properties=dealname,portal_activated`, token);
-        if (!dealResp.ok) { debug.steps.push({ step: 'deal_read_fail', dealId, status: dealResp.status }); continue; }
+        if (!dealResp.ok) continue;
 
         const deal = await dealResp.json();
         const props = deal.properties || {};
-        const activated = String(props.portal_activated || '').trim().toLowerCase();
-        debug.steps.push({ step: 'deal_check', dealId, dealName: props.dealname, portal_activated_raw: props.portal_activated, normalized: activated });
+        const activated = isActivated(props.portal_activated);
+        debug.steps.push({ step: 'deal_check', dealId, dealName: props.dealname, portal_activated_raw: props.portal_activated, activated });
 
-        if (activated === 'yes') {
+        if (activated) {
           activeDeals.push({ dealId: String(dealId), dealName: props.dealname || 'Your Yearbook' });
         }
       }
