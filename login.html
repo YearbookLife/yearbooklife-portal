@@ -178,15 +178,62 @@
           btn.textContent = 'Log In';
           return;
         }
-        // Phase 1 success — just prove it works
-        showMessage('✅ Success! You are logged in as ' + data.user.email + '. (Next phase: this will open your dashboard.)', 'success');
-        btn.textContent = 'Logged In ✓';
+        // Logged in — now find which dashboard(s) belong to this email
+        btn.textContent = 'Loading your dashboard...';
+        showMessage('Success! Finding your dashboard...', 'success');
+        await routeToDashboard(data.user.email);
       } catch (err) {
         console.error('Login error:', err);
         showMessage('Something went wrong. Please try again.', 'error');
         btn.disabled = false;
         btn.textContent = 'Log In';
       }
+    }
+
+    // After login: find active deals for this email and route accordingly
+    async function routeToDashboard(email) {
+      try {
+        const resp = await fetch('/api/find-my-deals?email=' + encodeURIComponent(email));
+        const data = await resp.json();
+        const deals = (data && data.deals) ? data.deals : [];
+
+        if (deals.length === 0) {
+          showMessage('You are logged in, but there is no active dashboard for your account right now. If you think this is a mistake, please contact us at 888-680-0143.', 'info');
+          const btn = document.getElementById('loginBtn');
+          btn.disabled = false;
+          btn.textContent = 'Log In';
+          return;
+        }
+
+        if (deals.length === 1) {
+          // Straight in
+          window.location.href = '/?dealId=' + encodeURIComponent(deals[0].dealId);
+          return;
+        }
+
+        // Multiple active deals — show a picker
+        showDealPicker(deals);
+
+      } catch (err) {
+        console.error('routeToDashboard error:', err);
+        showMessage('You are logged in, but we had trouble loading your dashboard. Please try again or call 888-680-0143.', 'error');
+        const btn = document.getElementById('loginBtn');
+        btn.disabled = false;
+        btn.textContent = 'Log In';
+      }
+    }
+
+    // Show a simple "which school?" picker when someone manages more than one
+    function showDealPicker(deals) {
+      const body = document.querySelector('.login-body');
+      let buttons = deals.map(function(d) {
+        return '<button class="login-btn" style="margin-bottom:10px;" onclick="window.location.href=\'/?dealId=' + encodeURIComponent(d.dealId) + '\'">' + (d.dealName || 'Open Dashboard') + '</button>';
+      }).join('');
+      body.innerHTML =
+        '<div style="text-align:center; margin-bottom:20px;">' +
+        '<div style="font-size:18px; font-weight:700; color:#0f172a; margin-bottom:6px;">Welcome back! 👋</div>' +
+        '<div style="font-size:14px; color:#475569;">You manage more than one yearbook. Which would you like to open?</div>' +
+        '</div>' + buttons;
     }
 
     async function doForgotPassword() {
