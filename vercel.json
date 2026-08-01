@@ -33,6 +33,15 @@
       ]
     },
     {
+      "src": "/api/find-my-deals",
+      "dest": "/api/find-my-deals.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
