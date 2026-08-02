@@ -20,13 +20,17 @@ function isActivated(raw: any): boolean {
   return v === 'true' || v === 'yes';
 }
 
-// Is this contact tagged specifically as "Admin"?
-// Tags can be separated by commas or semicolons (e.g. "Admin, Payment Contact").
-// We match the exact tag "Admin" — NOT "Co-Admin" or anything that merely contains "admin".
+// Is this contact tagged as the "Admin"?
+// IMPORTANT: HubSpot's "Yearbook Title" is a multi-select field whose stored
+// INTERNAL values differ from the labels you see in the UI:
+//   Label "Admin"    -> internal value "P-yb"
+//   Label "Co-Admin" -> internal value "Co-Chair"
+// The API returns the internal values (semicolon-separated), so we match "P-yb".
+// This deliberately does NOT let Co-Admin ("Co-Chair") in.
 function isAdmin(yearbookTitle: any): boolean {
   const raw = String(yearbookTitle || '');
   const tags = raw.split(/[,;]/).map(function (t) { return t.trim().toLowerCase(); });
-  return tags.indexOf('admin') !== -1;
+  return tags.indexOf('p-yb') !== -1;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
