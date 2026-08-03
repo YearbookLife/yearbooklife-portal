@@ -55,6 +55,15 @@
       ]
     },
     {
+      "src": "/api/send-invite",
+      "dest": "/api/send-invite.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
