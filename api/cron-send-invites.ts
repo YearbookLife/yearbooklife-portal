@@ -3,7 +3,6 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 const HS = 'https://api.hubapi.com';
 
 // The 8 Won-type stage IDs that should trigger a dashboard invite.
-// (From the pipeline list we pulled.)
 const WON_STAGE_IDS = [
   '995123631',   // Traditional PL Pipeline -> Won (Restored)
   '997997495',   // Print Order (Renewal) -> WON
@@ -24,6 +23,9 @@ const DELAY_HOURS = 0; // TEMPORARILY 0 FOR TESTING — set back to 12 before go
 const TEST_MODE = true;
 const TEST_DEAL_IDS = ['62706477603']; // add more test deal IDs here as needed
 // ===========================================
+
+// Optional cap so we drip-feed the backlog at go-live (e.g. ~100/day).
+const MAX_INVITES_PER_RUN = 100;
 
 async function hs(path: string, token: string, options: any = {}) {
   return fetch(HS + path, {
@@ -57,11 +59,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const results: any = { testMode: TEST_MODE, checked: 0, invited: [], skipped: [], errors: [] };
 
   try {
-    const cutoff = Date.now() - DELAY_HOURS * 60 * 60 * 1000; // must have entered Won stage before this
+    const cutoff = Date.now() - DELAY_HOURS * 60 * 60 * 1000; // closedate must be before this
 
     // 1) Find deals to consider.
-    // In TEST MODE we look up ONLY the specific test deals (so testing is reliable and
-    // doesn't depend on where they fall in a 100-deal scan). In live mode we scan Won stages.
+    // TEST MODE: look up ONLY the specific test deals.
+    // LIVE MODE: scan the Won stages for deals not yet invited.
     let searchBody: any;
     if (TEST_MODE) {
       searchBody = {
@@ -70,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             { propertyName: 'hs_object_id', operator: 'IN', values: TEST_DEAL_IDS }
           ]
         }],
-        properties: ['dealname', 'dealstage', 'portal_activated', 'hs_date_entered_current_stage', 'dashboard_invite_sent'],
+        properties: ['dealname', 'dealstage', 'portal_activated', 'closedate', 'dashboard_invite_sent'],
         limit: 100
       };
     } else {
@@ -81,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             { propertyName: 'dashboard_invite_sent', operator: 'NOT_HAS_PROPERTY' }
           ]
         }],
-        properties: ['dealname', 'dealstage', 'portal_activated', 'hs_date_entered_current_stage', 'dashboard_invite_sent'],
+        properties: ['dealname', 'dealstage', 'portal_activated', 'closedate', 'dashboard_invite_sent'],
         limit: 100
       };
     }
@@ -99,6 +101,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const deals = (await searchResp.json()).results || [];
     results.checked = deals.length;
 
+    let invitesThisRun = 0;
+
     for (const deal of deals) {
       const dealId = deal.id;
       const props = deal.properties || {};
@@ -109,25 +113,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
+      // Respect the per-run cap (drip-feeds the backlog at go-live)
+      if (invitesThisRun >= MAX_INVITES_PER_RUN) {
+        results.skipped.push({ dealId, reason: 'per-run cap reached' });
+        continue;
+      }
+
+      // Guard against re-sending: if already stamped, skip. (Belt-and-suspenders;
+      // live search already excludes these, but test mode search does not.)
+      if (props.dashboard_invite_sent) {
+        results.skipped.push({ dealId, reason: 'invite already sent' });
+        continue;
+      }
+
       // Must be portal-activated
       if (!isActivatedPortal(props.portal_activated)) {
         results.skipped.push({ dealId, reason: 'portal not activated' });
         continue;
       }
 
-      // Must have been in the Won stage for at least DELAY_HOURS
-      const enteredStr = props.hs_date_entered_current_stage;
-      const enteredMs = enteredStr ? new Date(enteredStr).getTime() : 0;
-      if (!enteredMs || enteredMs > cutoff) {
-        results.skipped.push({
-          dealId,
-          reason: 'still within delay window',
-          enteredStage: enteredStr,
-          enteredMs,
-          cutoff,
-          nowMs: Date.now(),
-          delayHours: DELAY_HOURS
-        });
+      // Must be at least DELAY_HOURS past the close date
+      const closeStr = props.closedate;
+      const closeMs = closeStr ? new Date(closeStr).getTime() : 0;
+      if (!closeMs) {
+        results.skipped.push({ dealId, reason: 'no close date' });
+        continue;
+      }
+      if (closeMs > cutoff) {
+        results.skipped.push({ dealId, reason: 'still within delay window', closedate: closeStr });
         continue;
       }
 
@@ -164,9 +177,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const inviteOk = inviteResp.ok;
       const inviteText = await inviteResp.text();
-
-      // Stamp dashboard_invite_sent regardless of "already exists" so we don't loop forever.
-      // (If the invite genuinely failed for another reason, we log it.)
       const alreadyExists = inviteText.toLowerCase().includes('already') || inviteText.toLowerCase().includes('registered');
 
       if (inviteOk || alreadyExists) {
@@ -176,6 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'PATCH',
           body: JSON.stringify({ properties: { dashboard_invite_sent: utcMidnight } })
         });
+        invitesThisRun++;
         results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)' });
       } else {
         results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: inviteText.substring(0, 200) });
