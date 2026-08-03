@@ -15,7 +15,7 @@ const WON_STAGE_IDS = [
   '999098015'    // Doggy Day Care Lead -> WON
 ];
 
-const DELAY_HOURS = 12;
+const DELAY_HOURS = 0; // TEMPORARILY 0 FOR TESTING — set back to 12 before go-live!
 
 // ============ SAFETY: TEST MODE ============
 // While TEST_MODE is true, the function ONLY processes deals whose ID is in
