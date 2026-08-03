@@ -59,10 +59,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const cutoff = Date.now() - DELAY_HOURS * 60 * 60 * 1000; // must have entered Won stage before this
 
-    // 1) Find deals currently in any of the Won stages, that haven't been invited yet
-    const searchResp = await hs('/crm/v3/objects/deals/search', hubspotToken, {
-      method: 'POST',
-      body: JSON.stringify({
+    // 1) Find deals to consider.
+    // In TEST MODE we look up ONLY the specific test deals (so testing is reliable and
+    // doesn't depend on where they fall in a 100-deal scan). In live mode we scan Won stages.
+    let searchBody: any;
+    if (TEST_MODE) {
+      searchBody = {
+        filterGroups: [{
+          filters: [
+            { propertyName: 'hs_object_id', operator: 'IN', values: TEST_DEAL_IDS }
+          ]
+        }],
+        properties: ['dealname', 'dealstage', 'portal_activated', 'hs_date_entered_current_stage', 'dashboard_invite_sent'],
+        limit: 100
+      };
+    } else {
+      searchBody = {
         filterGroups: [{
           filters: [
             { propertyName: 'dealstage', operator: 'IN', values: WON_STAGE_IDS },
@@ -71,7 +83,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }],
         properties: ['dealname', 'dealstage', 'portal_activated', 'hs_date_entered_current_stage', 'dashboard_invite_sent'],
         limit: 100
-      })
+      };
+    }
+
+    const searchResp = await hs('/crm/v3/objects/deals/search', hubspotToken, {
+      method: 'POST',
+      body: JSON.stringify(searchBody)
     });
 
     if (!searchResp.ok) {
