@@ -119,7 +119,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const enteredStr = props.hs_date_entered_current_stage;
       const enteredMs = enteredStr ? new Date(enteredStr).getTime() : 0;
       if (!enteredMs || enteredMs > cutoff) {
-        results.skipped.push({ dealId, reason: 'still within delay window' });
+        results.skipped.push({
+          dealId,
+          reason: 'still within delay window',
+          enteredStage: enteredStr,
+          enteredMs,
+          cutoff,
+          nowMs: Date.now(),
+          delayHours: DELAY_HOURS
+        });
         continue;
       }
 
