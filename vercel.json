@@ -64,6 +64,15 @@
       ]
     },
     {
+      "src": "/api/cron-send-invites",
+      "dest": "/api/cron-send-invites.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
+    {
       "src": "/api/list-pipelines",
       "dest": "/api/list-pipelines.ts",
       "methods": [
@@ -91,6 +100,12 @@
     {
       "src": "/(.*)",
       "dest": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-send-invites",
+      "schedule": "0 13 * * *"
     }
   ]
 }
