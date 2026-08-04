@@ -27,7 +27,7 @@ const TEST_DEAL_IDS = ['62706477603']; // add more test deal IDs here as needed
 // ===========================================
 
 // Optional cap so we drip-feed the backlog at go-live (e.g. ~100/day).
-const MAX_INVITES_PER_RUN = 100;
+const MAX_INVITES_PER_RUN = 75; // Resend free tier is 100/day; 75 leaves room for new deals
 
 async function hs(path: string, token: string, options: any = {}) {
   return fetch(HS + path, {
