@@ -73,22 +73,6 @@
       ]
     },
     {
-      "src": "/api/list-pipelines",
-      "dest": "/api/list-pipelines.ts",
-      "methods": [
-        "GET",
-        "OPTIONS"
-      ]
-    },
-    {
-      "src": "/api/debug-deal-props",
-      "dest": "/api/debug-deal-props.ts",
-      "methods": [
-        "GET",
-        "OPTIONS"
-      ]
-    },
-    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
