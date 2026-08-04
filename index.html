@@ -1097,6 +1097,7 @@
 
   <!-- Chat is handled by the HubSpot chat widget, loaded via the embed code at the bottom of this page -->
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -1165,14 +1166,73 @@
       }
     }
 
+    // ===== SECURITY GATE =====
+    // Before showing ANY dashboard data, verify:
+    //  1) the visitor is logged in, and
+    //  2) the dealId in the URL is actually one they're allowed to see.
+    // If not logged in -> send to /login. If the deal isn't theirs -> block.
+    async function checkAccess() {
+      try {
+        const cfgResp = await fetch('/api/supabase-config');
+        const cfg = await cfgResp.json();
+        if (!cfg.url || !cfg.anonKey) {
+          // Can't verify -> safest to send to login
+          window.location.href = '/login';
+          return false;
+        }
+        const supa = window.supabase.createClient(cfg.url, cfg.anonKey);
+        const { data: { session } } = await supa.auth.getSession();
+
+        if (!session || !session.user) {
+          // Not logged in -> go to login
+          window.location.href = '/login';
+          return false;
+        }
+
+        const email = session.user.email;
+
+        // No dealId in the URL -> send them through the normal login routing
+        if (!dealId) {
+          window.location.href = '/login';
+          return false;
+        }
+
+        // Check that this dealId belongs to the logged-in person
+        const resp = await fetch('/api/find-my-deals?email=' + encodeURIComponent(email));
+        const data = await resp.json();
+        const deals = (data && data.deals) ? data.deals : [];
+        const allowed = deals.some(function(d) { return String(d.dealId) === String(dealId); });
+
+        if (!allowed) {
+          // Logged in, but trying to view a deal that isn't theirs -> block
+          document.body.innerHTML =
+            '<div style="max-width:480px;margin:80px auto;font-family:-apple-system,sans-serif;text-align:center;padding:30px;">' +
+            '<h2 style="color:#0f766e;">Access Not Available</h2>' +
+            '<p style="color:#475569;line-height:1.6;">This dashboard isn\'t associated with your account. If you think this is a mistake, please contact us at 888-680-0143.</p>' +
+            '<a href="/login" style="display:inline-block;margin-top:16px;background:#14b8a6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Back to Login</a>' +
+            '</div>';
+          return false;
+        }
+
+        return true; // Logged in AND this deal is theirs
+      } catch (err) {
+        console.error('Access check failed:', err);
+        window.location.href = '/login';
+        return false;
+      }
+    }
+
     // Initialize the portal
     async function initPortal() {
+      // SECURITY: verify access before loading anything
+      const ok = await checkAccess();
+      if (!ok) return; // checkAccess already redirected or blocked
+
       // If dealId is provided, fetch from HubSpot
       if (dealId) {
         const success = await fetchDealFromHubSpot();
         if (!success) {
           console.warn('Failed to load HubSpot data, using test data');
-          // Fall back to test data or show error
         }
       }
       
@@ -1424,8 +1484,9 @@
       }
     }
 
-    // Initialize on page load
-    window.addEventListener('DOMContentLoaded', initializePage);
+    // NOTE: initializePage() is called by initPortal() AFTER the security gate passes.
+    // We intentionally do NOT call it directly here, so the dashboard can't render
+    // for someone who isn't logged in / isn't allowed to view this deal.
     loadBlogPosts();
 
     // Load blog posts
