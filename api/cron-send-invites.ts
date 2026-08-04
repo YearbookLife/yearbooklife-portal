@@ -12,7 +12,8 @@ const WON_STAGE_IDS = [
   '1000850703',  // Dance/Cheer Lead -> WON
   '1000822951',  // Church Directory Lead -> WON
   '999098015',   // Doggy Day Care Lead -> WON
-  '43137964'     // Print Order (Renewal) -> Multi-Year
+  '43137964',    // Print Order (Renewal) -> Multi-Year
+  '1398312509'   // Primary Lead Pipeline (Instaquote) -> Closed WON
 ];
 
 const DELAY_HOURS = 0; // TEMPORARILY 0 FOR TESTING — set back to 12 before go-live!
