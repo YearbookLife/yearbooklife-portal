@@ -113,7 +113,7 @@
   "crons": [
     {
       "path": "/api/cron-send-invites",
-      "schedule": "0 13 * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }
