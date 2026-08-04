@@ -708,6 +708,18 @@
           </div>
         </div>
 
+        <!-- Cover Due Date Banner (only shows if cover_due_date is filled) -->
+        <div id="coverDueDateWrap" style="text-align: center; margin: 20px 0; display: none;">
+          <div style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.2); border: 2px solid #c2410c; display: inline-block;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="font-size: 24px;">📖</div>
+              <div>
+                <div style="color: white; font-size: 18px; font-weight: 700;">Cover Due Date: <span id="coverDueDateBanner"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Canva-specific section (only shows if plan = Canva) -->
         <div class="canva-section" id="canvaSection" style="display: none;">
           <h3>📁 Canva Project Information</h3>
@@ -1113,6 +1125,7 @@
       bookSize: "N/A",
       paperWeight: "N/A",
       submitDate: "TBD",
+      coverDueDate: "",
       deliveryDate: "TBD",
       basePricePerBook: 0,
       multiYearTerm: "N/A",
@@ -1363,6 +1376,17 @@
         safeSetText('bookSize', customerData.bookSize);
         safeSetText('paperWeight', customerData.paperWeight);
         safeSetText('submitDateBanner', customerData.submitDate);
+
+        // Cover Due Date banner — only show if the field is filled
+        (function() {
+          const wrap = document.getElementById('coverDueDateWrap');
+          const span = document.getElementById('coverDueDateBanner');
+          const val = (customerData.coverDueDate || '').trim();
+          if (wrap && span) {
+            if (val) { span.textContent = val; wrap.style.display = ''; }
+            else { wrap.style.display = 'none'; }
+          }
+        })();
         safeSetText('deliveryDate', customerData.deliveryDate);
         safeSetText('basePricePerBook', "$" + customerData.basePricePerBook.toFixed(2));
         safeSetText('multiYearTerm', customerData.multiYearTerm);
