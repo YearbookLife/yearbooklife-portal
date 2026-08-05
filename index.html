@@ -614,7 +614,8 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
+    <div class="header" style="position: relative;">
+      <button onclick="doLogout()" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); color: #0f766e; border: 1px solid #14b8a6; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; z-index: 5;">Log Out</button>
       <div class="header-left" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
         <div style="background: white; padding: 16px 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
           <img src="https://yearbooklife.com/wp-content/uploads/2025/07/ybl-logo.png" alt="YearbookLife" style="height: 70px; width: auto; display: block;">
@@ -1254,6 +1255,22 @@
 
       // Now that HubSpot data is loaded, check whether to show the popup
       checkUrgentPopup();
+    }
+
+    // Log the user out: end their Supabase session, then send them to the login page
+    async function doLogout() {
+      try {
+        const cfgResp = await fetch('/api/supabase-config');
+        const cfg = await cfgResp.json();
+        if (cfg.url && cfg.anonKey && window.supabase) {
+          const supa = window.supabase.createClient(cfg.url, cfg.anonKey);
+          await supa.auth.signOut();
+        }
+      } catch (e) {
+        console.warn('logout cleanup issue (proceeding anyway):', e);
+      }
+      // Send them to the login page regardless
+      window.location.href = '/login';
     }
 
     // Call initPortal when DOM is ready
