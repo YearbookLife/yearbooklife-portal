@@ -16,7 +16,7 @@ const WON_STAGE_IDS = [
   '1398312509'   // Primary Lead Pipeline (Instaquote) -> Closed WON
 ];
 
-const DELAY_HOURS = 12;
+const DELAY_HOURS = 4; // Deals close by 5PM; sweep is 11PM (6h later), so same-day deals still go out that night. Small buffer for late edge cases.
 
 // ============ SAFETY: TEST MODE ============
 // While TEST_MODE is true, the function ONLY processes deals whose ID is in
