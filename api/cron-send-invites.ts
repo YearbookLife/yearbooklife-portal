@@ -115,6 +115,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
+      // Verify the deal is actually in one of the qualifying Won/Multi-Year stages.
+      // (In live mode the search already filters by stage; in test mode it does not,
+      //  so this makes the test meaningful — the stage ID must genuinely match.)
+      if (WON_STAGE_IDS.indexOf(String(props.dealstage)) === -1) {
+        results.skipped.push({ dealId, reason: 'stage not in the qualifying list', dealstage: props.dealstage });
+        continue;
+      }
+
       // Respect the per-run cap (drip-feeds the backlog at go-live)
       if (invitesThisRun >= MAX_INVITES_PER_RUN) {
         results.skipped.push({ dealId, reason: 'per-run cap reached' });
