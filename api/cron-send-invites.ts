@@ -9,7 +9,7 @@ const WON_STAGE_IDS = [
   '995003294',   // Band Book Lead -> Won
   '999965603',   // Military Book Lead -> WON
   '1000097294',  // Media Guide Lead -> WON
-  '1000850703',  // Dance/Cheer Lead -> WON
+  '1000857003',  // Dance/Cheer Lead -> WON
   '1000822951',  // Church Directory Lead -> WON
   '999098015',   // Doggy Day Care Lead -> WON
   '43137964',    // Print Order (Renewal) -> Multi-Year
