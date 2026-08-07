@@ -52,6 +52,36 @@ function isActivatedPortal(raw: any): boolean {
   return v === 'true' || v === 'yes';
 }
 
+// Delete-at-renewal: before sending a fresh invite, remove any EXISTING Supabase
+// login for this email so the customer gets a clean new setup. This is safe for
+// everyone: first-time customers have no existing login (nothing happens); returning
+// customers get their old login cleared so the new invite creates a fresh one.
+async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
+  try {
+    // Look up the user by email via the admin API
+    const listResp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users?email=' + encodeURIComponent(email),
+      { headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
+    );
+    if (!listResp.ok) return 'lookup-failed';
+    const data = await listResp.json();
+    const users = (data && data.users) ? data.users : (Array.isArray(data) ? data : []);
+    const match = users.find(function (u: any) {
+      return String(u.email || '').trim().toLowerCase() === email;
+    });
+    if (!match || !match.id) return 'no-existing-user';
+
+    // Delete that user
+    const delResp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users/' + match.id,
+      { method: 'DELETE', headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
+    );
+    return delResp.ok ? 'deleted-existing' : 'delete-failed';
+  } catch (e) {
+    return 'delete-error';
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const hubspotToken = process.env.HUBSPOT_ACCESS_TOKEN;
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -176,6 +206,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (!adminEmail) { results.skipped.push({ dealId, reason: 'no admin email' }); continue; }
+
+      // Delete-at-renewal: clear any existing login for this email first, so a
+      // returning admin gets a clean fresh setup. Harmless for first-time customers.
+      const delResult = await deleteExistingUser(supabaseUrl, serviceKey, adminEmail);
 
       // Send the Supabase invite
       const inviteResp = await fetch(`${supabaseUrl}/auth/v1/invite`, {
