@@ -1249,12 +1249,45 @@
           console.warn('Failed to load HubSpot data, using test data');
         }
       }
-      
+
+      // SEASON COMPLETE: if Final Review Completed is Yes, show the completion
+      // message instead of the normal dashboard, and stop here.
+      const frc = String(customerData.finalReviewCompleted || '').trim().toLowerCase();
+      if (frc === 'yes' || frc === 'true') {
+        showSeasonComplete();
+        return;
+      }
+
       // Initialize the page with customer data
       initializePage();
 
       // Now that HubSpot data is loaded, check whether to show the popup
       checkUrgentPopup();
+    }
+
+    // Show the "Your Yearbook is Complete!" message and hide the normal dashboard
+    function showSeasonComplete() {
+      document.body.innerHTML =
+        '<div style="max-width:560px;margin:60px auto;padding:20px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;">' +
+          '<div style="background:#ffffff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.12);overflow:hidden;border:1px solid #d1faf5;">' +
+            '<div style="background:linear-gradient(135deg,#14b8a6 0%,#0891b2 100%);padding:36px 28px;text-align:center;">' +
+              '<div style="display:inline-block;background:#ffffff;padding:12px 20px;border-radius:12px;margin-bottom:16px;">' +
+                '<img src="https://yearbooklife.com/wp-content/uploads/2025/07/ybl-logo.png" alt="YearbookLife" style="height:44px;width:auto;display:block;">' +
+              '</div>' +
+              '<div style="color:#ffffff;font-size:26px;font-weight:800;">Your Yearbook is Complete! \uD83C\uDF89</div>' +
+            '</div>' +
+            '<div style="padding:32px 30px;color:#334155;font-size:16px;line-height:1.7;text-align:center;">' +
+              '<p style="margin:0 0 18px;">Congratulations \u2014 your yearbook has been finalized and is on its way to being printed and delivered!</p>' +
+              '<p style="margin:0 0 18px;">If you have any questions about your delivery, please give us a call at <strong>888-680-0143</strong> or email us at <a href="mailto:production@yearbooklife.com" style="color:#0f766e;font-weight:600;text-decoration:none;">production@yearbooklife.com</a>.</p>' +
+              '<div style="background:#f0fdfa;border-radius:10px;padding:18px 20px;margin-top:22px;color:#0f766e;font-size:15px;">' +
+                '\uD83D\uDCD8 Keep an eye out over the next few days \u2014 your renewal for next school year is on its way!' +
+              '</div>' +
+            '</div>' +
+            '<div style="background:#f8fafc;padding:18px;text-align:center;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:13px;">' +
+              'YearbookLife \u2022 yearbooklife.com' +
+            '</div>' +
+          '</div>' +
+        '</div>';
     }
 
     // Log the user out: end their Supabase session, then send them to the login page
