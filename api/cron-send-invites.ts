@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HS = 'https://api.hubapi.com';
 
-// The 8 Won-type stage IDs that should trigger a dashboard invite.
+// The Won-type stage IDs that should trigger a dashboard invite.
 const WON_STAGE_IDS = [
   '995123631',   // Traditional PL Pipeline -> Won (Restored)
   '997997495',   // Print Order (Renewal) -> WON
@@ -13,7 +13,10 @@ const WON_STAGE_IDS = [
   '1000822951',  // Church Directory Lead -> WON
   '999098015',   // Doggy Day Care Lead -> WON
   '43137964',    // Print Order (Renewal) -> Multi-Year
-  '1398312509'   // Primary Lead Pipeline (Instaquote) -> Closed WON
+  '1398312509',  // Primary Lead Pipeline (Instaquote) -> Closed WON
+  '115016114',   // Traditional PL Pipeline -> Supplement Won (Restored)
+  '115012142',   // Print Order (Renewal) -> Supplement Won
+  '1410223525'   // Primary Lead Pipeline (Instaquote) -> Supplement WON
 ];
 
 const DELAY_HOURS = 4; // Deals close by 5PM; sweep is 11PM (6h later), so same-day deals still go out that night. Small buffer for late edge cases.
