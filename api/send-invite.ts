@@ -23,6 +23,31 @@ function isActivatedPortal(raw: any): boolean {
   return v === 'true' || v === 'yes';
 }
 
+// Delete any existing Supabase login for this email before sending a fresh invite
+// (clean slate for returning admins; harmless no-op for first-time customers).
+async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
+  try {
+    const listResp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users?email=' + encodeURIComponent(email),
+      { headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
+    );
+    if (!listResp.ok) return 'lookup-failed';
+    const data = await listResp.json();
+    const users = (data && data.users) ? data.users : (Array.isArray(data) ? data : []);
+    const match = users.find(function (u: any) {
+      return String(u.email || '').trim().toLowerCase() === email;
+    });
+    if (!match || !match.id) return 'no-existing-user';
+    const delResp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users/' + match.id,
+      { method: 'DELETE', headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
+    );
+    return delResp.ok ? 'deleted-existing' : 'delete-failed';
+  } catch (e) {
+    return 'delete-error';
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -91,6 +116,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!adminEmail) {
       return res.status(200).json({ skipped: true, reason: 'No Admin contact with an email found on deal', dealId });
     }
+
+    // Clear any existing login first (clean slate for returning admins)
+    await deleteExistingUser(supabaseUrl, serviceKey, adminEmail);
 
     // 3) Tell Supabase to send the invite (magic link) to that email
     const inviteResp = await fetch(`${supabaseUrl}/auth/v1/invite`, {
