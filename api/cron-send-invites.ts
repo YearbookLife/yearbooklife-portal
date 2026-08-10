@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import nodemailer from 'nodemailer';
 
 const HS = 'https://api.hubapi.com';
 
@@ -79,6 +80,61 @@ async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email
     return delResp.ok ? 'deleted-existing' : 'delete-failed';
   } catch (e) {
     return 'delete-error';
+  }
+}
+
+// Send a short nightly summary of the cron run to the team.
+// This is best-effort: if it fails, the cron still succeeds (invites already sent).
+const REPORT_TO = 'heather@yearbooklife.com';
+async function sendRunReport(results: any, testMode: boolean): Promise<void> {
+  try {
+    const user = process.env.GMAIL_USER;       // Dashboard@yearbooklife.com
+    const pass = process.env.GMAIL_APP_PASSWORD; // the 16-char app password
+    if (!user || !pass) return; // no creds configured -> skip silently
+
+    const invited = (results.invited || []).length;
+    const errors = (results.errors || []).length;
+    const skipped = (results.skipped || []).length;
+    const checked = results.checked || 0;
+
+    const invitedLines = (results.invited || [])
+      .map(function (i: any) { return '  \u2022 ' + i.adminEmail + ' (deal ' + i.dealId + ')'; })
+      .join('\n') || '  (none)';
+    const errorLines = (results.errors || [])
+      .map(function (e: any) { return '  \u2022 deal ' + e.dealId + ': ' + (e.detail || e.status || 'error'); })
+      .join('\n') || '  (none)';
+
+    const subject = 'Dashboard Invites \u2014 ' + invited + ' sent, ' + errors + ' errors'
+      + (testMode ? ' [TEST MODE]' : '');
+
+    const body =
+      'Nightly dashboard invite run summary\n' +
+      '=====================================\n\n' +
+      (testMode ? '*** TEST MODE IS ON \u2014 only test deals processed ***\n\n' : '') +
+      'Deals checked: ' + checked + '\n' +
+      'Invites sent:  ' + invited + '\n' +
+      'Skipped:       ' + skipped + '\n' +
+      'Errors:        ' + errors + '\n\n' +
+      'Invited:\n' + invitedLines + '\n\n' +
+      'Errors:\n' + errorLines + '\n\n' +
+      'Time: ' + new Date().toISOString() + '\n';
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: user, pass: pass }
+    });
+
+    await transporter.sendMail({
+      from: 'YearbookLife Dashboard <' + user + '>',
+      to: REPORT_TO,
+      subject: subject,
+      text: body
+    });
+  } catch (e) {
+    // Never let a report failure break the cron
+    console.warn('run report email failed (ignored):', e);
   }
 }
 
@@ -239,6 +295,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: inviteText.substring(0, 200) });
       }
     }
+
+    // Best-effort nightly summary email (won't block or fail the cron)
+    await sendRunReport(results, TEST_MODE);
 
     return res.status(200).json({ ok: true, ...results });
 
