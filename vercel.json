@@ -82,10 +82,11 @@
       ]
     },
     {
-      "src": "/api/get-progress-options",
-      "dest": "/api/get-progress-options.ts",
+      "src": "/api/save-progress",
+      "dest": "/api/save-progress.ts",
       "methods": [
-        "GET"
+        "POST",
+        "OPTIONS"
       ]
     },
     {
