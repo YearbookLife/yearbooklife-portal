@@ -82,6 +82,13 @@
       ]
     },
     {
+      "src": "/api/get-progress-options",
+      "dest": "/api/get-progress-options.ts",
+      "methods": [
+        "GET"
+      ]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
