@@ -610,6 +610,27 @@
         overflow-x: auto;
       }
     }
+  .progress-pill {
+      background: #ffffff;
+      border: 2px solid #14b8a6;
+      color: #0f766e;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .progress-pill:hover {
+      background: #14b8a6;
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .progress-pill:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -642,6 +663,28 @@
         <p style="margin-bottom: 30px; color: #475569; line-height: 1.7;">
           Stay up to date with important announcements, deadlines, and helpful tips for your yearbook project.
         </p>
+
+        <!-- YEARBOOK PROGRESS CHECK-IN -->
+        <div id="progressCheckin" style="margin-bottom: 30px; display: none;">
+          <!-- Full card (shown when no answer yet or on Update) -->
+          <div id="progressCardFull" style="background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%); border: 1px solid #99f6e4; border-radius: 14px; padding: 24px 26px;">
+            <div style="font-size: 18px; font-weight: 700; color: #0f766e; margin-bottom: 6px;">How's your yearbook coming along?</div>
+            <div style="font-size: 14px; color: #475569; margin-bottom: 18px;">Quick check so we know when to reach out. Takes one click.</div>
+            <div id="progressPills" style="display: flex; flex-wrap: wrap; gap: 10px;">
+              <button class="progress-pill" onclick="saveProgress('Not started / Need help')">Not started / Need help</button>
+              <button class="progress-pill" onclick="saveProgress('Just started')">Just started</button>
+              <button class="progress-pill" onclick="saveProgress('About halfway')">About halfway</button>
+              <button class="progress-pill" onclick="saveProgress('Nearly done')">Nearly done</button>
+              <button class="progress-pill" onclick="saveProgress('Ready to submit')">Ready to submit</button>
+            </div>
+          </div>
+          <!-- Collapsed line (shown after they answer) -->
+          <div id="progressCardCollapsed" style="display: none; align-items: center; gap: 10px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 12px 18px; font-size: 14px;">
+            <span style="color: #14b8a6; font-weight: 700;">&#10003;</span>
+            <span style="color: #334155;">Progress: <strong id="progressCurrentValue" style="color: #0f766e;"></strong></span>
+            <a href="#" onclick="reopenProgress(event)" style="color: #0891b2; font-weight: 600; text-decoration: none; margin-left: auto;">Update</a>
+          </div>
+        </div>
 
         <div id="bulletinPosts" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px;">
           <!-- Bulletin posts will be loaded from Google Sheet via API -->
@@ -1290,6 +1333,68 @@
         '</div>';
     }
 
+    // ===== YEARBOOK PROGRESS CHECK-IN =====
+    // Show the card: full version if they've never answered, collapsed line if they have.
+    function initProgressCheckin() {
+      const wrap = document.getElementById('progressCheckin');
+      if (!wrap) return;
+      // Never show on the completion screen (handled separately, but double-guard here)
+      const frc = String(customerData.finalReviewCompleted || '').trim().toLowerCase();
+      if (frc === 'yes' || frc === 'true') { wrap.style.display = 'none'; return; }
+
+      wrap.style.display = 'block';
+      const current = String(customerData.bookProgress || '').trim();
+      if (current) {
+        showProgressCollapsed(current);
+      } else {
+        showProgressFull();
+      }
+    }
+
+    function showProgressFull() {
+      const full = document.getElementById('progressCardFull');
+      const collapsed = document.getElementById('progressCardCollapsed');
+      if (full) full.style.display = 'block';
+      if (collapsed) collapsed.style.display = 'none';
+      // re-enable pills
+      const pills = document.querySelectorAll('.progress-pill');
+      pills.forEach(function (p) { p.disabled = false; });
+    }
+
+    function showProgressCollapsed(value) {
+      const full = document.getElementById('progressCardFull');
+      const collapsed = document.getElementById('progressCardCollapsed');
+      const valEl = document.getElementById('progressCurrentValue');
+      if (valEl) valEl.textContent = value;
+      if (full) full.style.display = 'none';
+      if (collapsed) collapsed.style.display = 'flex';
+    }
+
+    function reopenProgress(e) {
+      if (e) e.preventDefault();
+      showProgressFull();
+    }
+
+    async function saveProgress(value) {
+      // Disable pills immediately to prevent double-clicks
+      const pills = document.querySelectorAll('.progress-pill');
+      pills.forEach(function (p) { p.disabled = true; });
+
+      // Optimistically collapse right away (feels instant)
+      customerData.bookProgress = value;
+      showProgressCollapsed(value);
+
+      try {
+        await fetch('/api/save-progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dealId: dealId, progress: value })
+        });
+      } catch (err) {
+        console.warn('Could not save progress (will still show locally):', err);
+      }
+    }
+
     // Log the user out: end their Supabase session, then send them to the login page
     async function doLogout() {
       try {
@@ -1546,6 +1651,9 @@
         
         // Load bulletin board from Google Sheet API
         loadBulletinFromSheet(customerData.planChoice);
+
+        // Initialize the yearbook progress check-in card
+        initProgressCheckin();
         
       } catch (error) {
         console.error('Error during page initialization:', error);
