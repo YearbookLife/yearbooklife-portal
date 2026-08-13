@@ -1334,6 +1334,22 @@
     }
 
     // ===== YEARBOOK PROGRESS CHECK-IN =====
+    // Returns true if today is within the Dec 1 -> July 1 display window.
+    // The window wraps the new year, so: December (month 11) OR January-June (months 0-5).
+    // A deal in July 1 onward through Nov 30 is OUT of season (hidden).
+    function isInProgressSeason() {
+      const now = new Date();
+      const month = now.getMonth(); // 0=Jan, 11=Dec
+      const day = now.getDate();
+      // December: on from Dec 1
+      if (month === 11) return true;
+      // January through June: fully on
+      if (month >= 0 && month <= 5) return true;
+      // July: on only if it's exactly July... no — off starting July 1. So July+ is off.
+      // (July=6 through Nov=10 are off)
+      return false;
+    }
+
     // Show the card: full version if they've never answered, collapsed line if they have.
     function initProgressCheckin() {
       const wrap = document.getElementById('progressCheckin');
@@ -1341,6 +1357,11 @@
       // Never show on the completion screen (handled separately, but double-guard here)
       const frc = String(customerData.finalReviewCompleted || '').trim().toLowerCase();
       if (frc === 'yes' || frc === 'true') { wrap.style.display = 'none'; return; }
+
+      // SEASONAL WINDOW: only show the progress card between Dec 1 and July 1
+      // (repeats every year automatically, no code changes needed).
+      // On = December through June. Off = July through November.
+      if (!isInProgressSeason()) { wrap.style.display = 'none'; return; }
 
       wrap.style.display = 'block';
       const current = String(customerData.bookProgress || '').trim();
