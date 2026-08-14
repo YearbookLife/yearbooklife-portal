@@ -90,13 +90,6 @@
       ]
     },
     {
-      "src": "/api/get-field-options",
-      "dest": "/api/get-field-options.ts",
-      "methods": [
-        "GET"
-      ]
-    },
-    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
