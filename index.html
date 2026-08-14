@@ -701,7 +701,7 @@
       <div class="tab-content">
         <div class="school-header">
           <div class="school-name" id="schoolName">Lincoln High School 2026</div>
-          <div class="software-info">
+          <div class="software-info" id="softwareInfoBar">
             <div class="software-badge">
               <span>Software: <strong id="softwareName">Pictavo</strong></span>
             </div>
@@ -766,7 +766,7 @@
 
         <!-- Canva-specific section (only shows if plan = Canva) -->
         <div class="canva-section" id="canvaSection" style="display: none;">
-          <h3>📁 Canva Project Information</h3>
+          <h3 id="projectInfoHeading">📁 Canva Project Information</h3>
           <div class="canva-field">
             <div class="canva-label">Google Drive Link</div>
             <div style="font-size: 13px; color: #92400e; font-style: italic; margin-bottom: 10px; line-height: 1.5;">Upload your finished, print-ready file to this shared folder.</div>
@@ -782,7 +782,7 @@
             </div>
           </div>
           <div class="canva-field">
-            <div class="canva-label">Cover Setup Dimensions</div>
+            <div class="canva-label">Cover and Page Setup Dimensions</div>
             <div style="font-size: 13px; color: #92400e; font-style: italic; margin-bottom: 12px; line-height: 1.5;">Important: Use the Cover Width, Cover Height and Cover Gap (Spine) numbers below to set your cover in Canva.</div>
             <div class="canva-value">
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 4px;">
@@ -797,6 +797,10 @@
                 <div>
                   <div style="font-size: 12px; color: #92400e; font-weight: 600;">Cover Gap</div>
                   <div id="coverGap" style="font-size: 18px; color: #1f2937;">—</div>
+                </div>
+                <div>
+                  <div style="font-size: 12px; color: #92400e; font-weight: 600;">Pages</div>
+                  <div id="pageDimensions" style="font-size: 18px; color: #1f2937;">—</div>
                 </div>
               </div>
             </div>
@@ -1479,8 +1483,59 @@
         submissionLinks: [
           { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' }
         ]
+      },
+      // Total Digital variants — mirror the Canva config
+      'Total Digital / DP': {
+        url: 'https://www.canva.com/',
+        displayName: 'Total Digital',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLX-8ZS70hEuU',
+        techSupport: { phone: 'Visit Canva Help Center', link: 'https://www.canva.com/help/contact-us' },
+        customerPage: 'https://yearbooklife.com/canva-customer-home-page/',
+        storefrontForm: 'https://yearbooklife.com/yearbooklife-canva-program-storefront-information-sheet/',
+        submissionLinks: [
+          { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' }
+        ]
+      },
+      'Total Digital - Print It': {
+        url: 'https://www.canva.com/',
+        displayName: 'Total Digital',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLX-8ZS70hEuU',
+        techSupport: { phone: 'Visit Canva Help Center', link: 'https://www.canva.com/help/contact-us' },
+        customerPage: 'https://yearbooklife.com/canva-customer-home-page/',
+        storefrontForm: 'https://yearbooklife.com/yearbooklife-canva-program-storefront-information-sheet/',
+        submissionLinks: [
+          { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' }
+        ]
+      },
+      'Total Digital / W': {
+        url: 'https://www.canva.com/',
+        displayName: 'Total Digital',
+        videoTutorials: 'https://www.youtube.com/playlist?list=PLX-8ZS70hEuU',
+        techSupport: { phone: 'Visit Canva Help Center', link: 'https://www.canva.com/help/contact-us' },
+        customerPage: 'https://yearbooklife.com/canva-customer-home-page/',
+        storefrontForm: 'https://yearbooklife.com/yearbooklife-canva-program-storefront-information-sheet/',
+        submissionLinks: [
+          { title: 'Canva Yearbook FAQ & Instructions', url: 'https://yearbooklife.com/canva-faq/', icon: '🎨' }
+        ]
       }
     };
+
+    // Which plan_choice values are "Total Digital" variants
+    const TOTAL_DIGITAL_PLANS = ['Total Digital / DP', 'Total Digital - Print It', 'Total Digital / W'];
+    function isTotalDigital(plan) {
+      return TOTAL_DIGITAL_PLANS.indexOf(String(plan || '').trim()) !== -1;
+    }
+    // Which plans show the "Canva-style" project section (Canva OR Total Digital)
+    function showsProjectSection(plan) {
+      return String(plan || '').trim() === 'Canva' || isTotalDigital(plan);
+    }
+    // Map book_size -> the "Pages" dimension to display
+    function pageDimensionsFor(bookSize) {
+      const bs = String(bookSize || '').trim();
+      if (bs === '8.5"x11"') return '8.75"x11.25"';
+      if (bs === '9"x12"') return '9.25"x12.25"';
+      return 'Call to Confirm';
+    }
 
     // Initialize page with customer data
     // Stamp the "last updated" line with the current date and time
@@ -1509,8 +1564,8 @@
           linkElement.innerHTML = `🚀 Open ${config.displayName}`;
         }
         
-        // Show Canva section if applicable
-        if (customerData.planChoice === 'Canva') {
+        // Show the project section for Canva AND Total Digital plans
+        if (showsProjectSection(customerData.planChoice)) {
           const canvaSection = document.getElementById('canvaSection');
           if (canvaSection) canvaSection.style.display = 'block';
           const canvaGoogleDrive = document.getElementById('canvaGoogleDrive');
@@ -1529,9 +1584,24 @@
           if (ch) ch.textContent = customerData.coverHeight && String(customerData.coverHeight).trim() !== '' ? customerData.coverHeight + '"' : '—';
           const cg = document.getElementById('coverGap');
           if (cg) cg.textContent = customerData.coverGap && String(customerData.coverGap).trim() !== '' ? customerData.coverGap + '"' : '—';
-          // Hide activation link for Canva
+
+          // Pages dimension (from book_size) — shows on Canva AND Total Digital
+          const pd = document.getElementById('pageDimensions');
+          if (pd) pd.textContent = pageDimensionsFor(customerData.bookSize);
+
+          // Hide activation link for these plans
           const activationLinkContainer = document.getElementById('activationLinkContainer');
           if (activationLinkContainer) activationLinkContainer.style.display = 'none';
+
+          // ===== TOTAL DIGITAL - ONLY tweaks =====
+          if (isTotalDigital(customerData.planChoice)) {
+            // #3: rename the project section heading
+            const heading = document.getElementById('projectInfoHeading');
+            if (heading) heading.textContent = '📁 Yearbook Project Information';
+            // #4: hide the "Software: / Open" top bar entirely
+            const bar = document.getElementById('softwareInfoBar');
+            if (bar) bar.style.display = 'none';
+          }
         } else {
           // Show activation link for Pictavo and YBLive
           const activationLinkContainer = document.getElementById('activationLinkContainer');
