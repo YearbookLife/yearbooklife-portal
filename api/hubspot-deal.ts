@@ -103,7 +103,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 function normalizePlanChoice(choice: string | undefined): string {
   if (!choice) return 'Pictavo';
 
-  const normalized = choice.trim().toUpperCase();
+  const trimmed = choice.trim();
+  const normalized = trimmed.toUpperCase();
+
+  // Total Digital variants: pass the EXACT value through so the dashboard can
+  // tell the three variants apart (Total Digital / DP, Total Digital - Print It, Total Digital / W).
+  if (normalized.includes('TOTAL DIGITAL')) {
+    return trimmed;
+  }
 
   // Match on keywords so any variation routes correctly:
   // e.g. "Canva (DP)", "Canva (PI)", "Canva-Print (DP)", "Canva-Print (PI)" all -> Canva
