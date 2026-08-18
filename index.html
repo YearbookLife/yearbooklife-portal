@@ -1365,10 +1365,13 @@
       // Don't show on completion screen
       const frc = String(customerData.finalReviewCompleted || '').trim().toLowerCase();
       if (frc === 'yes' || frc === 'true') { el.style.display = 'none'; return; }
-      // TEMPORARY: always show for demo. (Seasonal Jan 1 - Jul 1 logic commented out below.)
-      el.style.display = 'block';
-      // const month = new Date().getMonth();
-      // if (month >= 0 && month <= 5) { el.style.display = 'block'; } else { el.style.display = 'none'; }
+      // Seasonal window: January 1 through July 1 (months Jan-Jun = 0-5)
+      const month = new Date().getMonth();
+      if (month >= 0 && month <= 5) {
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
     }
     function openPitfallsLightbox() {
       const lb = document.getElementById('pitfallsLightbox');
