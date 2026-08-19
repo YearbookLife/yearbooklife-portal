@@ -552,7 +552,7 @@
     }
 
     .faq-answer.open {
-      max-height: 500px;
+      max-height: 2000px;
     }
 
     .faq-answer-content {
@@ -1824,6 +1824,9 @@
         // Load bulletin board from Google Sheet API
         loadBulletinFromSheet(customerData.planChoice);
 
+                // Load Knowledge Base questions from Google Sheet API
+        loadKnowledgeBase(customerData.planChoice);
+
         // Initialize the yearbook progress check-in card
         initProgressCheckin();
 
@@ -2308,20 +2311,120 @@
       }
     }
 
-    function filterKB() {
-      const searchTerm = document.getElementById('kbSearch').value.toLowerCase();
-      const faqItems = document.querySelectorAll('.kb-item');
-      
-      faqItems.forEach(item => {
-        const question = item.querySelector('.faq-question').textContent.toLowerCase();
-        const answer = item.querySelector('.faq-answer').textContent.toLowerCase();
-        
-        if (question.includes(searchTerm) || answer.includes(searchTerm)) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
+           // ===== KNOWLEDGE BASE =====
+    // Questions come from the Google Sheet (tabs KB_Pictavo / KB_YBLive / KB_Canva).
+    // Total Digital plans have no tab on purpose and keep the built-in questions
+    // that are already written into this page.
+    const KB_SHEET_PLANS = ['Pictavo', 'YBLive', 'Canva'];
+
+    // Make sheet text safe to drop into the page
+    function kbEscapeHtml(str) {
+      return String(str === null || str === undefined ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Turn the simple formatting staff can type in the sheet into real HTML:
+    //   [click here](https://...)  -> a clickable link
+    //   **important**              -> bold
+    //   emails and phone numbers   -> clickable automatically
+    function kbRenderAnswer(raw) {
+      var text = kbEscapeHtml(raw);
+      var stash = [];
+      function park(html) {
+        stash.push(html);
+        return '\u0001' + (stash.length - 1) + '\u0001';
+      }
+
+      // [label](url) -> link
+      text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function (m, label, url) {
+        return park('<a href="' + url + '" target="_blank" rel="noopener" style="color:#0f766e;font-weight:600;">' + label + '</a>');
       });
+
+      // bare email addresses
+      text = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, function (m) {
+        return park('<a href="mailto:' + m + '" style="color:#0f766e;font-weight:600;">' + m + '</a>');
+      });
+
+      // phone numbers like 888-680-0143 or 1-800-290-0036
+      text = text.replace(/\b1?-?\d{3}-\d{3}-\d{4}\b/g, function (m) {
+        return park('<a href="tel:' + m.replace(/\D/g, '') + '" style="color:#0f766e;font-weight:600;">' + m + '</a>');
+      });
+
+      // **bold**
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+      // keep line breaks typed in the sheet
+      text = text.replace(/\n/g, '<br>');
+
+      // put the links back
+      return text.replace(/\u0001(\d+)\u0001/g, function (m, i) { return stash[Number(i)]; });
+    }
+
+    // Draw the questions onto the page
+    function kbRender(faqs) {
+      const box = document.getElementById('kbResults');
+      if (!box) return;
+      box.innerHTML = faqs.map(function (item) {
+        return '<div class="faq-item">' +
+                 '<div class="faq-question" onclick="toggleFAQ(this)">' + kbEscapeHtml(item.question) + '</div>' +
+                 '<div class="faq-answer"><div class="faq-answer-content">' + kbRenderAnswer(item.answer) + '</div></div>' +
+               '</div>';
+      }).join('');
+    }
+
+    // Fetch this customer's questions from the sheet
+    async function loadKnowledgeBase(plan) {
+      const planName = String(plan || '').trim();
+
+      // No sheet for this plan (Total Digital) -> leave the built-in questions alone
+      if (KB_SHEET_PLANS.indexOf(planName) === -1) return;
+
+      try {
+        const resp = await fetch('/api/knowledge-base?platform=' + encodeURIComponent(planName));
+        if (!resp.ok) throw new Error('status ' + resp.status);
+        const data = await resp.json();
+        const faqs = (data && data.faqs) ? data.faqs : [];
+        // Only swap them in if the sheet actually returned something. If the sheet is
+        // empty or unreachable, the customer still sees the built-in questions.
+        if (faqs.length > 0) kbRender(faqs);
+      } catch (err) {
+        console.warn('Knowledge Base sheet unavailable, showing built-in questions:', err);
+      }
+    }
+
+    // Search box (this was broken before — it looked for .kb-item, which doesn't exist)
+    function filterKB() {
+      const input = document.getElementById('kbSearch');
+      const term = (input ? input.value : '').trim().toLowerCase();
+      const items = document.querySelectorAll('#kbResults .faq-item');
+      let matches = 0;
+
+      items.forEach(function (item) {
+        const qEl = item.querySelector('.faq-question');
+        const aEl = item.querySelector('.faq-answer');
+        const q = (qEl ? qEl.textContent : '').toLowerCase();
+        const a = (aEl ? aEl.textContent : '').toLowerCase();
+        const hit = (term === '' || q.indexOf(term) !== -1 || a.indexOf(term) !== -1);
+        item.style.display = hit ? 'block' : 'none';
+        if (hit) matches++;
+      });
+
+      // "nothing found" line
+      let empty = document.getElementById('kbNoResults');
+      if (!empty) {
+        const box = document.getElementById('kbResults');
+        if (box) {
+          empty = document.createElement('p');
+          empty.id = 'kbNoResults';
+          empty.style.cssText = 'text-align:center;color:#64748b;padding:30px 10px;font-style:italic;';
+          empty.textContent = 'No articles matched your search. Try a different word, or call us at 888-680-0143.';
+          box.appendChild(empty);
+        }
+      }
+      if (empty) empty.style.display = (matches === 0) ? 'block' : 'none';
     }
 
     // POPUP MESSAGE SYSTEM
