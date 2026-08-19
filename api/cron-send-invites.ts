@@ -282,7 +282,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const inviteText = await inviteResp.text();
       const alreadyExists = inviteText.toLowerCase().includes('already') || inviteText.toLowerCase().includes('registered');
 
-      if (inviteOk || alreadyExists) {
+      if (inviteOk || alread      // If we could not clear the old login, "already registered" does NOT mean the
+      // customer was emailed — it means the stale login blocked the invite. Treat that
+      // as an error so it retries tomorrow instead of being stamped as sent.
+      const deleteFailed = (delResult === 'delete-failed' || delResult === 'lookup-failed' || delResult === 'delete-error');
+
+      if (inviteOk || (alreadyExists && !deleteFailed)) {yExists) {
         const now = new Date();
         const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
         await hs(`/crm/v3/objects/deals/${dealId}`, hubspotToken, {
@@ -290,9 +295,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify({ properties: { dashboard_invite_sent: utcMidnight } })
         });
         invitesThisRun++;
-        results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)' });
+                results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)' });
       } else {
-        results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: inviteText.substring(0, 200) });
+                results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: (deleteFailed ? 'login delete failed (' + delResult + ') — ' : '') + inviteText.substring(0, 200) });
       }
     }
 
