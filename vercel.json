@@ -90,6 +90,14 @@
       ]
     },
     {
+      "src": "/api/knowledge-base",
+      "dest": "/api/knowledge-base.ts",
+      "methods": [
+        "GET",
+        "OPTIONS"
+      ]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
