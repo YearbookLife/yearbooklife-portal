@@ -30,8 +30,11 @@ const TEST_MODE = true;
 const TEST_DEAL_IDS = ['62706477603']; // add more test deal IDs here as needed
 // ===========================================
 
-// Optional cap so we drip-feed the backlog at go-live (e.g. ~100/day).
-const MAX_INVITES_PER_RUN = 75; // Resend free tier is 100/day; 75 leaves room for new deals
+// Cap so we drip-feed the backlog at go-live.
+// NOTE: this must stay at or below the Supabase email rate limit
+// (Supabase dashboard -> Authentication -> Rate Limits -> "Rate limit for sending emails").
+// Anything above that limit fails with a 429 and simply retries the next night.
+const MAX_INVITES_PER_RUN = 75;
 
 async function hs(path: string, token: string, options: any = {}) {
   return fetch(HS + path, {
@@ -282,12 +285,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const inviteText = await inviteResp.text();
       const alreadyExists = inviteText.toLowerCase().includes('already') || inviteText.toLowerCase().includes('registered');
 
-      if (inviteOk || alread      // If we could not clear the old login, "already registered" does NOT mean the
+      // If we could not clear the old login, "already registered" does NOT mean the
       // customer was emailed — it means the stale login blocked the invite. Treat that
       // as an error so it retries tomorrow instead of being stamped as sent.
       const deleteFailed = (delResult === 'delete-failed' || delResult === 'lookup-failed' || delResult === 'delete-error');
 
-      if (inviteOk || (alreadyExists && !deleteFailed)) {yExists) {
+      if (inviteOk || (alreadyExists && !deleteFailed)) {
         const now = new Date();
         const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
         await hs(`/crm/v3/objects/deals/${dealId}`, hubspotToken, {
@@ -295,9 +298,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify({ properties: { dashboard_invite_sent: utcMidnight } })
         });
         invitesThisRun++;
-                results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)' });
+        results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)', deleteStep: delResult });
       } else {
-                results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: (deleteFailed ? 'login delete failed (' + delResult + ') — ' : '') + inviteText.substring(0, 200) });
+        results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: (deleteFailed ? 'login delete failed (' + delResult + ') \u2014 ' : '') + inviteText.substring(0, 200) });
       }
     }
 
