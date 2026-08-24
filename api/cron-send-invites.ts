@@ -88,7 +88,8 @@ async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email
 
 // Send a short nightly summary of the cron run to the team.
 // This is best-effort: if it fails, the cron still succeeds (invites already sent).
-const REPORT_TO = 'heather@yearbooklife.com';
+const REPORT_TO = 'heather@yearbooklife.com, production@yearbooklife.com';
+
 async function sendRunReport(results: any, testMode: boolean): Promise<void> {
   try {
     const user = process.env.GMAIL_USER;       // Dashboard@yearbooklife.com
