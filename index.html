@@ -917,12 +917,18 @@
         <h2 class="section-title">Quick Access Links</h2>
         
         <div class="quick-links">
-          <a href="https://www.pictavo.com/" target="_blank" class="quick-link-card" id="softwareLoginCard">
+                    <a href="https://www.pictavo.com/" target="_blank" class="quick-link-card" id="softwareLoginCard">
             <div class="quick-link-icon">🚀</div>
             <div class="quick-link-title">Login to Pictavo</div>
             <div class="quick-link-desc">Access your yearbook design software</div>
           </a>
 
+          <!-- Portrait-Pop: only shown on Canva plans (see initializePage) -->
+          <a href="https://portraitpop-yearbooklife.vercel.app/" target="_blank" class="quick-link-card" id="portraitPopCard" style="display: none;">
+            <div class="quick-link-icon">📸</div>
+            <div class="quick-link-title">Portrait-Pop by YearbookLife</div>
+            <div class="quick-link-desc">Easy tool to help you organize your portraits for your yearbook pages</div>
+          </a>
           <a href="https://yearbooklife.com/marketing-tools/" target="_blank" class="quick-link-card">
             <div class="quick-link-icon">🛍️</div>
             <div class="quick-link-title">Shop Marketing Materials</div>
@@ -1776,6 +1782,13 @@
           softwareLoginCard.href = config.url;
           const titleEl = softwareLoginCard.querySelector('.quick-link-title');
           if (titleEl) titleEl.textContent = "Login to " + config.displayName;
+        }
+
+                // Portrait-Pop card: Canva plans only. Hidden for everyone else.
+        const portraitPopCard = document.getElementById('portraitPopCard');
+        if (portraitPopCard) {
+          portraitPopCard.style.display =
+            (String(customerData.planChoice).trim() === 'Canva') ? 'flex' : 'none';
         }
         
         const customerHomeCard = document.getElementById('customerHomeCard');
