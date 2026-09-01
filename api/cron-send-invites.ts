@@ -26,7 +26,7 @@ const DELAY_HOURS = 4; // Deals close by 5PM; sweep is 11PM (6h later), so same-
 // While TEST_MODE is true, the function ONLY processes deals whose ID is in
 // TEST_DEAL_IDS. Every other deal is ignored, so real customers are never touched.
 // When you're ready to go live for everyone, set TEST_MODE = false.
-const TEST_MODE = true;
+const TEST_MODE = false;
 const TEST_DEAL_IDS = ['62706477603']; // add more test deal IDs here as needed
 // ===========================================
 
