@@ -104,8 +104,18 @@ async function sendRunReport(results: any, testMode: boolean): Promise<void> {
     const invitedLines = (results.invited || [])
       .map(function (i: any) { return '  \u2022 ' + i.adminEmail + ' (deal ' + i.dealId + ')'; })
       .join('\n') || '  (none)';
-    const errorLines = (results.errors || [])
+        const errorLines = (results.errors || [])
       .map(function (e: any) { return '  \u2022 deal ' + e.dealId + ': ' + (e.detail || e.status || 'error'); })
+      .join('\n') || '  (none)';
+
+    // Group the skipped deals by reason so we can see WHY they were skipped
+    const skipCounts: any = {};
+    (results.skipped || []).forEach(function (s: any) {
+      const r = s.reason || 'unknown';
+      skipCounts[r] = (skipCounts[r] || 0) + 1;
+    });
+    const skippedLines = Object.keys(skipCounts)
+      .map(function (r) { return '  \u2022 ' + skipCounts[r] + ' \u2014 ' + r; })
       .join('\n') || '  (none)';
 
     const subject = 'Dashboard Invites \u2014 ' + invited + ' sent, ' + errors + ' errors'
@@ -119,6 +129,7 @@ async function sendRunReport(results: any, testMode: boolean): Promise<void> {
       'Invites sent:  ' + invited + '\n' +
       'Skipped:       ' + skipped + '\n' +
       'Errors:        ' + errors + '\n\n' +
+            'Skipped (by reason):\n' + skippedLines + '\n\n' +
       'Invited:\n' + invitedLines + '\n\n' +
       'Errors:\n' + errorLines + '\n\n' +
       'Time: ' + new Date().toISOString() + '\n';
