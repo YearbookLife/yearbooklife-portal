@@ -182,13 +182,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         limit: 100
       };
     } else {
-      searchBody = {
+            searchBody = {
         filterGroups: [{
           filters: [
             { propertyName: 'dealstage', operator: 'IN', values: WON_STAGE_IDS },
-            { propertyName: 'dashboard_invite_sent', operator: 'NOT_HAS_PROPERTY' }
+            { propertyName: 'dashboard_invite_sent', operator: 'NOT_HAS_PROPERTY' },
+            // Without this, the search returns every Won deal back to 2017. Those old
+            // deals have no portal_activated flag, so they get skipped every night and
+            // permanently occupy all 100 slots — the queue never drains.
+            { propertyName: 'portal_activated', operator: 'EQ', value: 'true' }
           ]
         }],
+        // Explicit order so the backlog drains predictably, oldest first.
+        sorts: [{ propertyName: 'createdate', direction: 'ASCENDING' }],
         properties: ['dealname', 'dealstage', 'portal_activated', 'closedate', 'dashboard_invite_sent'],
         limit: 100
       };
