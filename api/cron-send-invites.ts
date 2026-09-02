@@ -213,7 +213,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const deals = (await searchResp.json()).results || [];
     results.checked = deals.length;
 
-    let invitesThisRun = 0;
+        let invitesThisRun = 0;
+
+    // Tracks which admin emails have already been sent an invite during THIS run.
+    // One admin can be the contact on several deals. Sending them a second invite
+    // deletes the login the first invite just created, which kills the link they
+    // were sent. Their single login already reaches every school they manage.
+    const invitedEmails = new Set<string>();
 
     for (const deal of deals) {
       const dealId = deal.id;
@@ -282,7 +288,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      if (!adminEmail) { results.skipped.push({ dealId, reason: 'no admin email' }); continue; }
+            if (!adminEmail) { results.skipped.push({ dealId, reason: 'no admin email' }); continue; }
+
+      // DUPLICATE GUARD: this admin was already emailed earlier in this run, so stamp
+      // the deal but do NOT send a second invite. A second invite would delete the
+      // login the first one created and break the link they already have. One login
+      // covers all of their schools via the multi-school picker.
+      if (invitedEmails.has(adminEmail)) {
+        const dupNow = new Date();
+        const dupMidnight = Date.UTC(dupNow.getUTCFullYear(), dupNow.getUTCMonth(), dupNow.getUTCDate());
+        await hs(`/crm/v3/objects/deals/${dealId}`, hubspotToken, {
+          method: 'PATCH',
+          body: JSON.stringify({ properties: { dashboard_invite_sent: dupMidnight } })
+        });
+        results.invited.push({
+          dealId,
+          adminEmail,
+          note: 'same admin already invited in this run - stamped, no second email sent',
+          deleteStep: 'skipped'
+        });
+        continue;
+      }
 
       // Delete-at-renewal: clear any existing login for this email first, so a
       // returning admin gets a clean fresh setup. Harmless for first-time customers.
@@ -315,7 +341,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           method: 'PATCH',
           body: JSON.stringify({ properties: { dashboard_invite_sent: utcMidnight } })
         });
-        invitesThisRun++;
+                invitesThisRun++;
+        invitedEmails.add(adminEmail);
         results.invited.push({ dealId, adminEmail, note: inviteOk ? 'invited' : 'already existed (stamped anyway)', deleteStep: delResult });
       } else {
         results.errors.push({ dealId, adminEmail, status: inviteResp.status, detail: (deleteFailed ? 'login delete failed (' + delResult + ') \u2014 ' : '') + inviteText.substring(0, 200) });
