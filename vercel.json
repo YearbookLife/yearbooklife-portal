@@ -97,6 +97,15 @@
         "OPTIONS"
       ]
     },
+        {
+      "src": "/api/request-new-link",
+      "dest": "/api/request-new-link.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "OPTIONS"
+      ]
+    },
     {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
