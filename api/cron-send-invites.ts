@@ -108,16 +108,28 @@ async function sendRunReport(results: any, testMode: boolean): Promise<void> {
       .map(function (e: any) { return '  \u2022 deal ' + e.dealId + ': ' + (e.detail || e.status || 'error'); })
       .join('\n') || '  (none)';
 
-    // Group the skipped deals by reason so we can see WHY they were skipped
-    const skipCounts: any = {};
+        // Group the skipped deals by reason. Reasons that need someone to DO something get
+    // the deals listed underneath. The routine ones (per-run cap, delay window) are just
+    // counted, since they resolve themselves on the next run.
+    const ROUTINE_SKIPS = ['per-run cap reached', 'still within delay window'];
+    const skipGroups: any = {};
     (results.skipped || []).forEach(function (s: any) {
       const r = s.reason || 'unknown';
-      skipCounts[r] = (skipCounts[r] || 0) + 1;
+      if (!skipGroups[r]) skipGroups[r] = [];
+      skipGroups[r].push(s);
     });
-    const skippedLines = Object.keys(skipCounts)
-      .map(function (r) { return '  \u2022 ' + skipCounts[r] + ' \u2014 ' + r; })
+    const skippedLines = Object.keys(skipGroups)
+      .map(function (r) {
+        const items = skipGroups[r];
+        let line = '  \u2022 ' + items.length + ' \u2014 ' + r;
+        if (ROUTINE_SKIPS.indexOf(r) === -1) {
+          line += '\n' + items.map(function (s: any) {
+            return '      - deal ' + s.dealId + (s.dealname ? ': ' + s.dealname : '');
+          }).join('\n');
+        }
+        return line;
+      })
       .join('\n') || '  (none)';
-
     const subject = 'Dashboard Invites \u2014 ' + invited + ' sent, ' + errors + ' errors'
       + (testMode ? ' [TEST MODE]' : '');
 
@@ -288,8 +300,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-            if (!adminEmail) { results.skipped.push({ dealId, reason: 'no admin email' }); continue; }
-
+                  if (!adminEmail) {
+        results.skipped.push({ dealId, reason: 'no admin email', dealname: props.dealname || '' });
+        continue;
+      }
       // DUPLICATE GUARD: this admin was already emailed earlier in this run, so stamp
       // the deal but do NOT send a second invite. A second invite would delete the
       // login the first one created and break the link they already have. One login
