@@ -1191,6 +1191,14 @@
 
   <!-- Chat is handled by the HubSpot chat widget, loaded via the embed code at the bottom of this page -->
 
+    <!-- Vercel Web Analytics. Included with the Pro plan. Tracks which tabs and links
+       customers use. We deliberately send plan type only - never school names,
+       emails, or deal IDs. Patterns, not individuals. -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Get URL parameters
@@ -1992,10 +2000,27 @@
       }
     }
         
+        // Tab names for analytics, in the same order as the tabs on the page.
+    const TAB_LABELS = ['Bulletin Board', 'Contract Details', 'Quick Links', 'Request Spec Change', 'Knowledge Base', 'Contact & Support', 'Blog'];
+
+    // Send a custom event to Vercel Web Analytics.
+    // Never pass anything identifying - no emails, school names, or deal IDs.
+    function trackEvent(name, data) {
+      try {
+        const payload = data || {};
+        payload.plan = String((typeof customerData !== 'undefined' && customerData && customerData.planChoice) || 'unknown').trim();
+        if (window.va) window.va('event', { name: name, data: payload });
+      } catch (e) {
+        // Analytics must never break the dashboard
+      }
+    }
+
     function switchTab(index) {
+      trackEvent('tab_view', { tab: TAB_LABELS[index] || ('tab ' + index) });
+
       const tabs = document.querySelectorAll('.tab');
       const contents = document.querySelectorAll('.tab-content');
-      
+
       tabs.forEach((tab, i) => {
         if (i === index) {
           tab.classList.add('active');
