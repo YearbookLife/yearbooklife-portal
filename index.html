@@ -917,6 +917,21 @@
         <h2 class="section-title">Quick Access Links</h2>
         
         <div class="quick-links">
+                    <script>
+            // Track which Quick Links customers actually use. Runs once when the page
+            // loads and attaches a click handler to every card in this section.
+            document.addEventListener('DOMContentLoaded', function () {
+              const container = document.querySelector('.quick-links');
+              if (!container) return;
+              container.addEventListener('click', function (e) {
+                const card = e.target.closest('.quick-link-card');
+                if (!card) return;
+                const titleEl = card.querySelector('.quick-link-title');
+                const label = titleEl ? titleEl.textContent.trim() : 'unknown';
+                trackEvent('quick_link_click', { link: label });
+              });
+            });
+          </script>
                     <a href="https://www.pictavo.com/" target="_blank" class="quick-link-card" id="softwareLoginCard">
             <div class="quick-link-icon">🚀</div>
             <div class="quick-link-title">Login to Pictavo</div>
@@ -2162,6 +2177,7 @@
 
       const submitBtn = document.getElementById('submitSpecBtn');
       const changeType = document.getElementById('changeType').value;
+            trackEvent('spec_change_submit', { changeType: changeType || 'unknown' });
       const specNotes = (document.getElementById('specNotes')?.value || '');
       const firstName = (document.getElementById('specFirstName')?.value || '').trim();
       const lastName = (document.getElementById('specLastName')?.value || '').trim();
