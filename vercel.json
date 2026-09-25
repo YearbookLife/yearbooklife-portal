@@ -113,7 +113,23 @@
         {
       "src": "/(.*\\.png)",
       "dest": "/$1"
-    },    {
+        },
+    {
+      "src": "/api/portraitpop-pass",
+      "dest": "/api/portraitpop-pass.ts",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/portraitpop-verify",
+      "dest": "/api/portraitpop-verify.ts",
+      "methods": ["GET", "POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/portraitpop",
+      "dest": "/api/portraitpop.ts",
+      "methods": ["GET", "OPTIONS"]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
