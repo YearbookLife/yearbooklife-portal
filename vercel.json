@@ -13,6 +13,10 @@
       "src": "set-password.html",
       "use": "@vercel/static"
     },
+        {
+      "src": "*.png",
+      "use": "@vercel/static"
+    },
     {
       "src": "api/*.ts",
       "use": "@vercel/node"
@@ -106,7 +110,10 @@
         "OPTIONS"
       ]
     },
-    {
+        {
+      "src": "/(.*\\.png)",
+      "dest": "/$1"
+    },    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
