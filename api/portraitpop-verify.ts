@@ -9,6 +9,13 @@ import crypto from 'crypto';
  * This is what stops a saved copy of the page working indefinitely.
  *
  * No student data is sent here - only the pass.
+ *
+ * The pass may arrive as { session } or { pass }, or as a query string. The tool
+ * sends "session"; accepting both means a naming change on either side cannot
+ * silently lock every adviser out.
+ *
+ * An invalid pass returns HTTP 401 AND { valid: false }, so a caller checking
+ * either one gets the right answer.
  */
 
 // ---------------------------------------------------------------------------
@@ -64,26 +71,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const secret = getSecret();
   if (!secret) {
     console.error('PORTRAITPOP_SECRET is missing or shorter than 16 characters');
-    return res.status(500).json({ ok: false, error: 'not-configured' });
+    return res.status(500).json({ ok: false, valid: false, error: 'not-configured' });
   }
 
   try {
     const body: any = req.body || {};
-    const pass = body.pass || req.query.pass || '';
+    const pass = body.session || body.pass || req.query.session || req.query.pass || '';
     const payload = verifyPass(pass, secret, 'session');
 
     if (!payload) {
       return res.status(401).json({
         ok: false,
+        valid: false,
         error: 'expired',
         message: 'Your PortraitPop session has ended. Please reopen it from the Quick Links tab of your dashboard.'
       });
     }
 
-    return res.status(200).json({ ok: true, expiresAt: payload.exp });
+    return res.status(200).json({ ok: true, valid: true, expiresAt: payload.exp });
 
   } catch (error) {
     console.error('portraitpop-verify error:', error);
-    return res.status(500).json({ ok: false, error: 'server-error' });
+    return res.status(500).json({ ok: false, valid: false, error: 'server-error' });
   }
 }
