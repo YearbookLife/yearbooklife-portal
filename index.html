@@ -939,7 +939,7 @@
           </a>
 
                     <!-- Portrait-Pop: only shown on Canva plans (see initializePage) -->
-                    <a href="https://portraitpop-yearbooklife.vercel.app/" target="_blank" class="quick-link-card" id="portraitPopCard" style="display: none;">
+                              <a href="#" onclick="openPortraitPop(event)" class="quick-link-card" id="portraitPopCard" style="display: none;">
                         <img src="/portraitpop-logo.png" alt="PortraitPop by YearbookLife" style="display: block; width: 130px; height: auto; margin: 0 auto 8px;">
             <div class="quick-link-desc">Easy tool to help you organize your portraits for your yearbook pages</div>
           </a>
@@ -2021,6 +2021,47 @@
       }
     }
 
+        // Opens PortraitPop. The tool has no public address - we ask the server for a
+    // short-lived pass, and that pass is what loads it. A copied link dies in about
+    // two minutes; the session inside the tool lasts about eight hours.
+    async function openPortraitPop(e) {
+      if (e) e.preventDefault();
+
+      // Open the tab FIRST, before any awaiting, or the popup blocker kills it
+      const tab = window.open('', '_blank');
+      if (tab) {
+        tab.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening PortraitPop…</title></head>' +
+          '<body style="font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;' +
+          'justify-content:center;height:100vh;margin:0;color:#475569;background:#f0fdfa;">' +
+          '<p>Opening PortraitPop…</p></body></html>');
+      }
+
+      try {
+        const cfgResp = await fetch('/api/supabase-config');
+        const cfg = await cfgResp.json();
+        if (!cfg.url || !cfg.anonKey) throw new Error('config unavailable');
+
+        const client = window.supabase.createClient(cfg.url, cfg.anonKey);
+        const { data: { session } } = await client.auth.getSession();
+        if (!session || !session.access_token) throw new Error('not signed in');
+
+        const resp = await fetch('/api/portraitpop-pass', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: session.access_token })
+        });
+        const data = await resp.json();
+        if (!data.ok || !data.pass) throw new Error(data.error || 'no pass issued');
+
+        const url = '/api/portraitpop?pass=' + encodeURIComponent(data.pass);
+        if (tab) { tab.location.href = url; } else { window.location.href = url; }
+
+      } catch (err) {
+        console.error('PortraitPop open failed:', err);
+        if (tab) tab.close();
+        alert('We could not open PortraitPop just now. Please refresh your dashboard and try again, or call us at 888-680-0143.');
+      }
+    }
     function switchTab(index) {
       trackEvent('tab_view', { tab: TAB_LABELS[index] || ('tab ' + index) });
 
