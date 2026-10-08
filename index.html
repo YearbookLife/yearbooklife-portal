@@ -664,6 +664,26 @@
           Stay up to date with important announcements, deadlines, and helpful tips for your yearbook project.
         </p>
 
+        <!-- PINNED CANVA PROGRAM POSTER (Canva plans only; no seasonal window) -->
+        <div id="pinnedCanvaProgram" style="display:none; float:left; width:260px; margin:0 28px 20px 0;">
+          <div style="position:relative; max-width:260px; margin:0; cursor:pointer;" onclick="openCanvaPosterLightbox()">
+            <img src="/canva-program-poster.png" alt="Your Canva yearbook just got more backup - what the expanded Canva program includes" style="width:100%; height:auto; border-radius:14px; box-shadow:0 6px 24px rgba(0,0,0,0.15); border:1px solid #e2e8f0; display:block;">
+            <!-- Click Here sticker -->
+            <div style="position:absolute; top:-10px; right:-10px; background:#f97316; color:#fff; font-weight:800; font-size:12px; padding:7px 12px; border-radius:999px; box-shadow:0 4px 12px rgba(249,115,22,0.4); transform:rotate(8deg); white-space:nowrap;">
+              👆 Click to Read!
+            </div>
+          </div>
+          <div style="text-align:left; margin-top:8px; color:#0f766e; font-size:13px; font-weight:600; max-width:260px;">👆 Click the image to read it full size</div>
+        </div>
+
+        <!-- Lightbox overlay for the Canva program poster -->
+        <div id="canvaPosterLightbox" onclick="closeCanvaPosterLightbox()" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.85); z-index:9999; align-items:center; justify-content:center; padding:20px; cursor:pointer;">
+          <div style="position:relative; max-width:95%; max-height:95%; overflow:auto;">
+            <img src="/canva-program-poster.png" alt="Your Canva yearbook just got more backup - what the expanded Canva program includes" style="max-width:100%; height:auto; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+            <div style="position:absolute; top:12px; right:12px; background:#fff; color:#0f172a; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,0.3);">×</div>
+          </div>
+        </div>
+
         <!-- PINNED PITFALLS IMAGE (seasonal: Jan 1 - Jul 1) -->
         <div id="pinnedPitfalls" style="display:none; float:left; width:260px; margin:0 28px 20px 0;">
           <div style="position:relative; max-width:260px; margin:0; cursor:pointer;" onclick="openPitfallsLightbox()">
@@ -1410,6 +1430,28 @@
       if (lb) lb.style.display = 'none';
     }
 
+    // ===== PINNED CANVA PROGRAM POSTER =====
+    // Canva plans only. Unlike the pitfalls image there is NO seasonal window:
+    // it shows from now until we take it down (comment out the call in
+    // initializePage to retire it).
+    function initCanvaProgramPoster() {
+      const el = document.getElementById('pinnedCanvaProgram');
+      if (!el) return;
+      // Don't show on the completion screen
+      const frc = String(customerData.finalReviewCompleted || '').trim().toLowerCase();
+      if (frc === 'yes' || frc === 'true') { el.style.display = 'none'; return; }
+      const plan = String(customerData.planChoice || '').trim();
+      el.style.display = (plan === 'Canva') ? 'block' : 'none';
+    }
+    function openCanvaPosterLightbox() {
+      const lb = document.getElementById('canvaPosterLightbox');
+      if (lb) lb.style.display = 'flex';
+    }
+    function closeCanvaPosterLightbox() {
+      const lb = document.getElementById('canvaPosterLightbox');
+      if (lb) lb.style.display = 'none';
+    }
+
     // Format a date value as "Month DD, YYYY" (e.g. April 05, 2026).
     // If the value isn't a real parseable date (like "TBD" or free text), it's
     // returned unchanged so we never show a broken date.
@@ -1867,6 +1909,9 @@
 
         // Initialize the pinned pitfalls image (seasonal)
         initPinnedPitfalls();
+
+        // Initialize the pinned Canva program poster (Canva plans only)
+        initCanvaProgramPoster();
         
       } catch (error) {
         console.error('Error during page initialization:', error);
