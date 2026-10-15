@@ -947,7 +947,13 @@
                 const card = e.target.closest('.quick-link-card');
                 if (!card) return;
                 const titleEl = card.querySelector('.quick-link-title');
-                const label = titleEl ? titleEl.textContent.trim() : 'unknown';
+                                const img = card.querySelector('img[alt]');
+                // Cards that show a logo instead of a text title (PortraitPop) carry a
+                // data-track label. Without this they all recorded as "unknown".
+                const label = card.getAttribute('data-track')
+                  || (titleEl ? titleEl.textContent.trim() : '')
+                  || (img && img.alt ? img.alt.trim() : '')
+                  || 'unknown';
                 trackEvent('quick_link_click', { link: label });
               });
             });
@@ -959,7 +965,7 @@
           </a>
 
                     <!-- Portrait-Pop: only shown on Canva plans (see initializePage) -->
-                              <a href="#" onclick="openPortraitPop(event)" class="quick-link-card" id="portraitPopCard" style="display: none;">
+                              <a href="#" onclick="openPortraitPop(event)" class="quick-link-card" id="portraitPopCard" data-track="PortraitPop" style="display: none;">
                         <img src="/portraitpop-logo.png" alt="PortraitPop by YearbookLife" style="display: block; width: 130px; height: auto; margin: 0 auto 8px;">
             <div class="quick-link-desc">Easy tool to help you organize your portraits for your yearbook pages</div>
           </a>
