@@ -373,10 +373,21 @@
       color: #0f172a;
     }
 
-    .quick-link-desc {
+        .quick-link-desc {
       font-size: 13px;
       color: #64748b;
       line-height: 1.5;
+    }
+
+    /* PortraitPop logo used as a card icon, matched to the emoji icons.
+       align-self stops the flex column stretching the image and squashing it;
+       36px + 11px margin equals the emoji's 39px + 8px, so titles line up. */
+    .pp-icon {
+      height: 36px;
+      width: auto;
+      display: block;
+      align-self: flex-start;
+      margin-bottom: 11px;
     }
 
     .contact-section {
@@ -968,8 +979,18 @@
                               <a href="#" onclick="openPortraitPop(event)" class="quick-link-card" id="portraitPopCard" data-track="PortraitPop" style="display: none;">
                         <img src="/portraitpop-logo.png" alt="PortraitPop by YearbookLife" style="display: block; width: 130px; height: auto; margin: 0 auto 8px;">
             <div class="quick-link-desc">Easy tool to help you organize your portraits for your yearbook pages</div>
+          </a>          <!-- PortraitPop instructions + video: Canva plans only (see initializePage) -->
+          <a href="https://yearbooklife.com/wp-content/uploads/2026/10/PortraitPop-Instructions.pdf" target="_blank" class="quick-link-card" id="portraitPopInstructionsCard" style="display: none;">
+            <img src="/portraitpop-icon.png" alt="" class="pp-icon">
+            <div class="quick-link-title">PortraitPop Instructions</div>
+            <div class="quick-link-desc">Printable step-by-step guide to using PortraitPop</div>
           </a>
-          <a href="https://yearbooklife.com/marketing-tools/" target="_blank" class="quick-link-card">
+
+          <a href="https://www.youtube.com/watch?v=AZLVkpm59wU" target="_blank" class="quick-link-card" id="portraitPopVideoCard" style="display: none;">
+            <img src="/portraitpop-icon.png" alt="" class="pp-icon">
+            <div class="quick-link-title">PortraitPop Video Walkthrough</div>
+            <div class="quick-link-desc">Watch how to use PortraitPop from start to finish</div>
+          </a>          <a href="https://yearbooklife.com/marketing-tools/" target="_blank" class="quick-link-card">
             <div class="quick-link-icon">🛍️</div>
             <div class="quick-link-title">Shop Marketing Materials</div>
             <div class="quick-link-desc">Order flyers, banners, and promotional items</div>
@@ -1854,12 +1875,13 @@
           if (titleEl) titleEl.textContent = "Login to " + config.displayName;
         }
 
-                // Portrait-Pop card: Canva plans only. Hidden for everyone else.
-        const portraitPopCard = document.getElementById('portraitPopCard');
-        if (portraitPopCard) {
-          portraitPopCard.style.display =
-            (String(customerData.planChoice).trim() === 'Canva') ? 'flex' : 'none';
-        }
+                                // Portrait-Pop cards (tool, instructions, video): Canva plans only.
+        // Hidden for everyone else.
+        const isCanvaPlan = (String(customerData.planChoice).trim() === 'Canva');
+        ['portraitPopCard', 'portraitPopInstructionsCard', 'portraitPopVideoCard'].forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.style.display = isCanvaPlan ? 'flex' : 'none';
+        });
         
         const customerHomeCard = document.getElementById('customerHomeCard');
         if (customerHomeCard) customerHomeCard.href = config.customerPage;
