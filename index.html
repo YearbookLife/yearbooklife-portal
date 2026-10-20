@@ -952,7 +952,7 @@
             // Track which Quick Links customers actually use. Runs once when the page
             // loads and attaches a click handler to every card in this section.
             document.addEventListener('DOMContentLoaded', function () {
-              const container = document.querySelector('.quick-links');
+              const container = document;
               if (!container) return;
               container.addEventListener('click', function (e) {
                 const card = e.target.closest('.quick-link-card');
