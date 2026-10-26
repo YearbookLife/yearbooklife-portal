@@ -13,6 +13,10 @@
       "src": "set-password.html",
       "use": "@vercel/static"
     },
+    {
+      "src": "pp.html",
+      "use": "@vercel/static"
+    },
         {
       "src": "*.png",
       "use": "@vercel/static"
@@ -130,6 +134,36 @@
       "methods": ["GET", "OPTIONS"]
     },
     {
+      "src": "/api/pp-auth",
+      "dest": "/api/pp-auth.ts",
+      "methods": ["GET", "POST"]
+    },
+    {
+      "src": "/api/pp-photographer",
+      "dest": "/api/pp-photographer.ts",
+      "methods": ["GET", "POST"]
+    },
+    {
+      "src": "/api/pp-staff",
+      "dest": "/api/pp-staff.ts",
+      "methods": ["GET", "POST"]
+    },
+    {
+      "src": "/api/pp-tool",
+      "dest": "/api/pp-tool.ts",
+      "methods": ["GET"]
+    },
+    {
+      "src": "/api/pp-verify",
+      "dest": "/api/pp-verify.ts",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/pp-cron",
+      "dest": "/api/pp-cron.ts",
+      "methods": ["GET"]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
@@ -137,6 +171,10 @@
         "POST",
         "OPTIONS"
       ]
+    },
+    {
+      "src": "/pp(/signin)?/?",
+      "dest": "/pp.html"
     },
     {
       "src": "/login",
@@ -159,6 +197,10 @@
     {
       "path": "/api/cron-cleanup-stale-users",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/pp-cron",
+      "schedule": "0 6 * * *"
     }
   ]
 }
