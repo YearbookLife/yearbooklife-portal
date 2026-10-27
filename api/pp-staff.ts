@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           + 'Each license is for one school. Unused licenses don’t expire. Once you send one to a school, '
           + 'that school has 60 days from the admin’s first sign-in.</p>',
           { label: 'Send licenses to schools', url }));
-      return res.status(200).json({ ok: true, message: quantity + ' licenses added to ' + ph.name + ' at $' + unit.toFixed(2) + ' each ($' + total.toFixed(2) + ' total).' });
+      return res.status(200).json({ ok: true, message: quantity + (quantity === 1 ? ' license' : ' licenses') + ' added to ' + ph.name + ' at $' + unit.toFixed(2) + ' each ($' + total.toFixed(2) + ' total).' });
     }
 
     if (b.action === 'set-status') {

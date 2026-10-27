@@ -606,8 +606,10 @@ export async function checkYearbookLifeSchool(input: SchoolInput): Promise<Schoo
 
     // 4) Same email domain as a YearbookLife customer school? Districts share
     //    domains across many schools, so this only flags, never blocks.
+    //    It's an extra, so if HubSpot won't answer it (e.g. the access token has
+    //    no permission to read companies), the license still goes through.
     const domain = email ? email.split('@')[1] : '';
-    if (domain && !WEBMAIL.has(domain)) {
+    if (domain && !WEBMAIL.has(domain)) try {
       const cos = await hsFetch('/crm/v3/objects/companies/search', {
         filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'EQ', value: domain }] }],
         properties: ['name', 'domain'], limit: 5
@@ -620,6 +622,8 @@ export async function checkYearbookLifeSchool(input: SchoolInput): Promise<Schoo
         const hit = (batch.results || []).find((d: any) => isCustomerDeal(d.properties || {}));
         if (hit) { flagged.push('admin email domain ' + domain + ' matches YearbookLife customer "' + String(hit.properties.dealname).trim() + '" (deal ' + hit.id + ')'); break; }
       }
+    } catch (e: any) {
+      console.warn('pp school check: email-domain lookup skipped:', e && e.message || e);
     }
 
     if (flagged.length) return { block: false, flag: true, detail: 'Possible match: ' + flagged.slice(0, 3).join('; ') };
