@@ -24,8 +24,8 @@ export const MAX_DEVICES = 2;                // devices allowed per school admin
 export const ADMIN_SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 export const PHOTOGRAPHER_SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 export const STAFF_SESSION_MS = 12 * 60 * 60 * 1000;
-export const LOGIN_LINK_MS = 30 * 60 * 1000;            // "email me a link" links
-export const INVITE_LINK_MS = 30 * 24 * 60 * 60 * 1000; // first invite to a school admin
+export const LOGIN_LINK_MS = 15 * 60 * 1000;            // "email me a link" links
+export const INVITE_LINK_MS = 7 * 24 * 60 * 60 * 1000;  // first invite to a school admin or photographer
 
 export const SESSION_COOKIE = 'pp_sess';
 export const DEVICE_COOKIE = 'pp_dev';
@@ -192,6 +192,31 @@ export function sameOrigin(req: VercelRequest): boolean {
   if (!origin) return true; // same-origin fetches from some browsers omit it on POST
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
   try { return new URL(origin).host === host; } catch (e) { return false; }
+}
+
+/* Browser security rules for pages showing the tool. connect-src 'self' means the
+   page can only ever talk to this site, so even a bug could not send student
+   photos or names anywhere else. Kept in sync with api/portraitpop.ts. */
+export const TOOL_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline'",
+  "style-src 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "font-src data:",
+  "connect-src 'self' blob:",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+  "object-src 'none'"
+].join('; ');
+
+export function toolSecurityHeaders(res: VercelResponse) {
+  res.setHeader('Content-Security-Policy', TOOL_CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
 }
 
 export function noStore(res: VercelResponse) {

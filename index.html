@@ -1252,7 +1252,7 @@
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/vendor/supabase-js-2.117.3.js"></script>
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -2126,7 +2126,9 @@
         const data = await resp.json();
         if (!data.ok || !data.pass) throw new Error(data.error || 'no pass issued');
 
-        const url = '/api/portraitpop?pass=' + encodeURIComponent(data.pass);
+        // PortraitPop can live on its own address (PORTRAITPOP_ORIGIN) so its saved work
+        // never shares browser storage with the dashboard.
+        const url = (cfg.portraitpopOrigin || '') + '/api/portraitpop?pass=' + encodeURIComponent(data.pass);
         if (tab) { tab.location.href = url; } else { window.location.href = url; }
 
       } catch (err) {

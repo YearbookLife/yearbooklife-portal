@@ -157,7 +157,7 @@ async function inviteAdmin(req: VercelRequest, ph: any, lic: any): Promise<boole
     + 'which lays out your yearbook portrait pages and exports them for Canva.</p>'
     + timing
     + '<p>Student photos and names stay on your computer. They are never uploaded.</p>'
-    + '<p style="font-size:13px;color:#64748b">This link is just for you and works once. Next time, go to the sign-in page and enter your email to get a new link.</p>',
+    + '<p style="font-size:13px;color:#64748b">This link is just for you, works once and expires in 7 days. Next time, go to the sign-in page and enter your email to get a new link.</p>',
     { label: 'Open my PortraitPop account', url });
   return sendEmail(lic.admin_email, 'PortraitPop access for ' + (lic.school_name || 'your school'), html);
 }

@@ -17,6 +17,10 @@
       "src": "pp.html",
       "use": "@vercel/static"
     },
+    {
+      "src": "vendor/*",
+      "use": "@vercel/static"
+    },
         {
       "src": "*.png",
       "use": "@vercel/static"
@@ -119,6 +123,10 @@
       "dest": "/$1"
         },
     {
+      "src": "/vendor/(.*)",
+      "dest": "/vendor/$1"
+    },
+    {
       "src": "/api/portraitpop-pass",
       "dest": "/api/portraitpop-pass.ts",
       "methods": ["POST", "OPTIONS"]
@@ -132,6 +140,16 @@
       "src": "/api/portraitpop",
       "dest": "/api/portraitpop.ts",
       "methods": ["GET", "OPTIONS"]
+    },
+    {
+      "src": "/api/portraitpop-key",
+      "dest": "/api/portraitpop-key.ts",
+      "methods": ["POST"]
+    },
+    {
+      "src": "/api/pp-key",
+      "dest": "/api/pp-key.ts",
+      "methods": ["POST"]
     },
     {
       "src": "/api/pp-auth",

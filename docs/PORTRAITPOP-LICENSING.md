@@ -21,6 +21,17 @@ Address: **`https://yearbooklife-portal.vercel.app/pp`** (one page for photograp
 - **No "Print with YearbookLife"** on exports.
 - Cancelling an invite the admin never used returns the license. Removing a school that has signed in does not.
 
+**Student privacy (applies to the dashboard version too)**
+- Student photos and names never leave the browser. The tool page is sent with a strict browser security rule (Content-Security-Policy, `connect-src 'self'`), so it can only talk to this site.
+- Saved work is encrypted in the browser (AES-GCM) with a key from `/api/portraitpop-key` (dashboard) or `/api/pp-key` (licensed), given out only after the sign-in is checked and kept in memory. Each adviser or school has its own key, so others on the same computer can't open it. "Save my work to a file" is encrypted the same way. Saved work untouched for 30 days is removed.
+- Before export, the adviser must confirm the school approved everyone included; the left-out count and names are shown. The confirmation is saved locally with the work.
+- After 25 minutes idle a warning appears; at 30 minutes the page clears photos, names and the key.
+- "Finish & clean up" on the Download step removes saved work and explains what stays on the computer.
+- The dashboard's sign-in library is now served from this site (`/vendor/supabase-js-2.117.3.js`) instead of an outside CDN.
+- Sign-in links expire in 15 minutes; invites in 7 days.
+- Optional: give PortraitPop its own address so its storage is fully separate from the dashboard. Add a domain such as `portraitpop.yearbooklife.com` to this Vercel project (DNS by the dev team), then set `PORTRAITPOP_ORIGIN=https://portraitpop.yearbooklife.com`, `DASHBOARD_URL=https://yearbooklife-portal.vercel.app` and `PP_BASE_URL=https://portraitpop.yearbooklife.com`.
+- Privacy test with fake students: every request, storage entry and cookie checked (30 checks). See the compliance review.
+
 **Sharing protection**
 - Sign-in is by emailed link only. The link works once and lands on a page with a **Sign in** button (so email scanners can't use it up).
 - The sign-in is kept in a secure cookie the page can't read. A saved or forwarded copy of the PortraitPop page can't export.

@@ -121,10 +121,10 @@ async function requestLink(req: VercelRequest, res: VercelResponse, b: any) {
   let html: string;
   if (links.length === 1) {
     html = emailLayout(base, 'Your PortraitPop sign-in link',
-      '<p>Click the button below to sign in. The link works once and expires in 30 minutes.</p>', { label: 'Sign in to PortraitPop', url: links[0].url });
+      '<p>Click the button below to sign in. The link works once and expires in 15 minutes.</p>', { label: 'Sign in to PortraitPop', url: links[0].url });
   } else {
     html = emailLayout(base, 'Your PortraitPop sign-in links',
-      '<p>Your email has more than one PortraitPop account. Pick the one you want. Each link works once and expires in 30 minutes.</p>'
+      '<p>Your email has more than one PortraitPop account. Pick the one you want. Each link works once and expires in 15 minutes.</p>'
       + links.map(l => '<p style="margin:16px 0"><a href="' + esc(l.url) + '" style="color:#EB6E44;font-weight:700">' + esc(l.label) + '</a></p>').join(''));
   }
   await sendEmail(email, 'Your PortraitPop sign-in link', html);

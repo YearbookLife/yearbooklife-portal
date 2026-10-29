@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { ppEnabled, configured, currentAdmin, ADMIN_BLOCK_MESSAGES, noStore, esc, logEvent } from '../lib/pp';
+import { ppEnabled, configured, currentAdmin, ADMIN_BLOCK_MESSAGES, noStore, esc, logEvent, toolSecurityHeaders } from '../lib/pp';
 import * as dashboardTool from './portraitpop';
 
 /**
@@ -85,12 +85,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // The tool fails closed without these, so set them. The real proof of sign-in
     // is the cookie; this value is only a "yes, check with the server" marker.
-    const inject = '<script>window.__PORTRAITPOP_SESSION="cookie";window.__PORTRAITPOP_VERIFY_URL="/api/pp-verify";</script>';
+    const inject = '<script>window.__PORTRAITPOP_SESSION="cookie";window.__PORTRAITPOP_VERIFY_URL="/api/pp-verify"'
+      + ';window.__PORTRAITPOP_KEY_URL="/api/pp-key"'
+      + ';window.__PORTRAITPOP_REOPEN_URL="/pp";window.__PORTRAITPOP_REOPEN_LABEL="your PortraitPop account";</script>';
     html = html.replace('<head>', '<head>' + inject);
     if (html.indexOf('__PORTRAITPOP_SESSION__') !== -1) html = html.split('__PORTRAITPOP_SESSION__').join('cookie');
 
-    // Keep each school's saved work separate from other accounts on the same computer.
-    html = html.split("'portraitpop.work.v1'").join("'portraitpop.work.v1.pp." + String(a.license.id).slice(0, 8) + "'");
+    // Saved work is encrypted per license with a key from /api/pp-key, so schools
+    // sharing a computer can't open each other's work.
+
 
     const code = String(a.license.code || '');
     if (html.indexOf(PDF_ANCHOR) !== -1) {
@@ -110,8 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     noStore(res);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('X-Frame-Options', 'DENY');
+    toolSecurityHeaders(res);
     return res.status(200).send(html);
   } catch (e) {
     console.error('pp-tool error:', e);
