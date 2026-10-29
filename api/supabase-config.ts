@@ -13,6 +13,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
 
   res.status(200).json({
     url: process.env.SUPABASE_URL || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || ''
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    // Where PortraitPop is served, if it has its own address. Empty = same site.
+    portraitpopOrigin: String(process.env.PORTRAITPOP_ORIGIN || '').replace(/\/+$/, '')
   });
 }

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>PortraitPop Accounts</title>
+<link rel="icon" href="/portraitpop-icon.png">
+<!--
+  PORTRAITPOP ACCOUNTS (photographer licensing program)
+
+  One page, four views, chosen by who is signed in:
+    - not signed in   -> "email me a sign-in link"
+    - school admin    -> their school, days left, Open PortraitPop
+    - photographer    -> send licenses to schools, manage admins
+    - YearbookLife staff (PP_STAFF_EMAILS) -> photographers, licenses, alerts
+
+  Separate from the customer dashboard (index.html). Talks only to /api/pp-*.
+-->
+<style>
+  :root{
+    --navy:#0B2840; --orange:#FF6A00; --yellow:#FFC107; --teal:#00B3A4; --aqua:#D9F4F2; --gray:#6B7785;
+    --line:#E3E8EE; --bg:#F6FAFA; --card:#FFFFFF; --red:#B42318; --redbg:#FEF3F2; --green:#067647; --greenbg:#ECFDF3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--navy);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5}
+  header{background:var(--card);border-bottom:1px solid var(--line)}
+  .bar{max-width:1080px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:16px}
+  .bar img{height:54px;width:auto}
+  .bar .who{margin-left:auto;font-size:13px;color:var(--gray);text-align:right}
+  .bar .who button{margin-left:8px}
+  main{max-width:1080px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:24px;margin:0 0 4px}
+  h2{font-size:18px;margin:0 0 12px}
+  p{margin:0 0 12px}
+  .muted{color:var(--gray)}
+  .small{font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px}
+  .narrow{max-width:460px;margin:40px auto}
+  .center{text-align:center}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 4px}
+  input,select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid #C9D3DD;border-radius:9px;background:#fff;color:var(--navy)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .field{margin-bottom:12px}
+  button,.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:11px 20px;cursor:pointer;background:var(--orange);color:#fff;text-decoration:none;display:inline-block}
+  button:disabled{opacity:.55;cursor:default}
+  button.secondary,.btn.secondary{background:#fff;color:var(--navy);border:1px solid #C9D3DD}
+  button.link{background:none;color:var(--navy);padding:4px 6px;font-weight:600;text-decoration:underline;font-size:13px}
+  button.danger{color:var(--red)}
+  .big{font-size:17px;padding:14px 28px}
+  .msg{border-radius:10px;padding:11px 14px;margin:12px 0;font-size:14px;display:none}
+  .msg.show{display:block}
+  .msg.ok{background:var(--greenbg);color:var(--green)}
+  .msg.err{background:var(--redbg);color:var(--red)}
+  .msg.info{background:var(--aqua);color:var(--navy)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat b{display:block;font-size:26px;line-height:1.1}
+  .stat span{font-size:13px;color:var(--gray)}
+  .stat.hl{border-color:var(--teal);background:var(--aqua)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--gray);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .tablewrap{overflow-x:auto}
+  .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:2px 10px;white-space:nowrap}
+  .pill.available{background:#EEF2F6;color:var(--gray)}
+  .pill.invited{background:#FFF4D6;color:#8A5A00}
+  .pill.active{background:var(--aqua);color:#00675E}
+  .pill.expired,.pill.revoked{background:#EEF2F6;color:var(--gray)}
+  .pill.suspended{background:var(--redbg);color:var(--red)}
+  .actions{white-space:nowrap}
+  .hero{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .days{font-size:44px;font-weight:800;line-height:1;color:var(--teal)}
+  ul.tight{margin:0;padding-left:20px}
+  ul.tight li{margin:4px 0}
+  .alert{border-left:4px solid var(--yellow);padding:8px 12px;background:#FFFBEB;border-radius:6px;margin:8px 0;font-size:14px}
+  .hidden{display:none !important}
+  dialog{border:0;border-radius:14px;padding:22px;max-width:440px;width:calc(100% - 32px);color:var(--navy)}
+  dialog::backdrop{background:rgba(11,40,64,.45)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .price{background:var(--aqua);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  footer{text-align:center;font-size:12px;color:var(--gray);padding:20px}
+  @media (max-width:640px){ .bar .who span{display:none} th.hide-sm,td.hide-sm{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <img src="/portraitpop-logo.png" alt="PortraitPop by YearbookLife">
+    <div class="who hidden" id="who"><span id="whoEmail"></span><button class="secondary" id="logoutBtn" type="button">Sign out</button></div>
+  </div>
+</header>
+
+<main id="app">
+  <div class="card narrow center muted" id="loading">Loading…</div>
+
+  <!-- ======================= SIGN-IN LINK LANDING ======================= -->
+  <section id="vSignin" class="hidden">
+    <div class="card narrow center">
+      <h1>Sign in to PortraitPop</h1>
+      <p class="muted">Click below to finish signing in on this computer.</p>
+      <button class="big" id="consumeBtn" type="button">Sign in</button>
+      <div class="msg" id="signinMsg"></div>
+    </div>
+  </section>
+
+  <!-- ======================= SIGNED OUT ======================= -->
+  <section id="vLogin" class="hidden">
+    <div class="card narrow">
+      <h1>Sign in to PortraitPop</h1>
+      <p class="muted">Enter your email and we'll send you a sign-in link. No password needed.</p>
+      <div class="msg" id="loginNote"></div>
+      <form id="loginForm">
+        <div class="field"><label for="loginEmail">Email</label><input id="loginEmail" type="email" autocomplete="email" required></div>
+        <button type="submit" id="loginBtn">Email me a link</button>
+      </form>
+      <div class="msg" id="loginMsg"></div>
+      <p class="small muted" style="margin-top:18px">YearbookLife customer? Open PortraitPop from your <a href="/">YearbookLife dashboard</a> instead.</p>
+    </div>
+  </section>
+
+  <!-- ======================= SCHOOL ADMIN ======================= -->
+  <section id="vAdmin" class="hidden">
+    <div class="card">
+      <div class="hero">
+        <div style="flex:1;min-width:240px">
+          <h1 id="aSchool"></h1>
+          <p class="muted" id="aFrom"></p>
+          <button class="big" id="openToolBtn" type="button">Open PortraitPop</button>
+        </div>
+        <div class="center" style="min-width:150px">
+          <div class="days" id="aDays"></div>
+          <div class="small muted" id="aDaysLabel"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Good to know</h2>
+      <ul class="tight">
+        <li>Student photos and names stay on this computer. PortraitPop never uploads them.</li>
+        <li>Your account can be signed in on <b>one computer at a time</b>. Signing in somewhere new signs the other one out.</li>
+        <li>You can use up to <b>two computers</b>. If you get a new one, ask your photographer to reset your devices.</li>
+        <li>Need a new sign-in link later? Come back to this page and enter your email.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ======================= PHOTOGRAPHER ======================= -->
+  <section id="vPhotog" class="hidden">
+    <h1 id="pName"></h1>
+    <p class="muted">Send a license to each school you work with. Each school's yearbook admin gets their own sign-in.</p>
+    <div class="stats">
+      <div class="stat hl"><b id="cAvail">0</b><span>Unused licenses</span></div>
+      <div class="stat"><b id="cInvited">0</b><span>Waiting for first sign-in</span></div>
+      <div class="stat"><b id="cActive">0</b><span>Active schools</span></div>
+      <div class="stat"><b id="cEnded">0</b><span>Ended or removed</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Send a license to a school</h2>
+      <p class="small muted">Uses one unused license. The school's 60 days start the first time the admin signs in. Schools that already work with YearbookLife can't be licensed; if that happens, no license is used.</p>
+      <form id="sendForm">
+        <div class="grid">
+          <div class="field" style="grid-column:1/-1"><label for="sSchool">School name</label><input id="sSchool" required maxlength="120" placeholder="e.g. Lincoln High School"></div>
+          <div class="field"><label for="sCity">City</label><input id="sCity" required maxlength="60"></div>
+          <div class="field"><label for="sState">State</label><select id="sState" required></select></div>
+          <div class="field"><label for="sZip">Zip code</label><input id="sZip" required inputmode="numeric" maxlength="10"></div>
+          <div class="field"><label for="sAdminName">Yearbook admin's name</label><input id="sAdminName" maxlength="80"></div>
+          <div class="field"><label for="sAdminEmail">Yearbook admin's email</label><input id="sAdminEmail" type="email" required></div>
+        </div>
+        <button type="submit" id="sendBtn">Send license</button>
+      </form>
+      <div class="msg" id="sendMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Your schools</h2>
+      <div class="msg" id="schoolsMsg"></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>School</th><th>Admin</th><th>Status</th><th class="hide-sm">License</th><th></th></tr></thead>
+        <tbody id="schoolsBody"></tbody>
+      </table></div>
+      <p class="small muted" id="noSchools" style="margin-top:12px">No schools yet. Send your first license above.</p>
+    </div>
+
+    <div class="card">
+      <h2>Need more licenses?</h2>
+      <p>Call YearbookLife at <b>888-680-0143</b>. Every license in an order is priced at that order's tier:</p>
+      <div class="tablewrap"><table style="max-width:420px">
+        <tbody>
+          <tr><td>1 to 4 licenses</td><td><b>$80</b> each</td></tr>
+          <tr><td>5 to 19</td><td><b>$75</b> each</td></tr>
+          <tr><td>20 to 49</td><td><b>$70</b> each</td></tr>
+          <tr><td>50 to 99</td><td><b>$65</b> each</td></tr>
+          <tr><td>100 to 199</td><td><b>$60</b> each</td></tr>
+          <tr><td>200 or more</td><td>Call for pricing</td></tr>
+        </tbody>
+      </table></div>
+      <p class="small muted" style="margin-top:12px">Unused licenses never expire.</p>
+    </div>
+  </section>
+
+  <!-- ======================= STAFF ======================= -->
+  <section id="vStaff" class="hidden">
+    <h1>PortraitPop licensing</h1>
+    <p class="muted">YearbookLife staff view. Add photographers, add licenses after their invoice is paid, and keep an eye on alerts.</p>
+
+    <div class="card" id="alertsCard">
+      <h2>Needs a look</h2>
+      <div id="alertsBody"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h2 style="margin:0">Photographers</h2>
+        <button type="button" id="addPhBtn">Add photographer</button>
+      </div>
+      <div class="msg" id="staffMsg"></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Photographer</th><th>Unused</th><th>Waiting</th><th>Active</th><th class="hide-sm">Ended</th><th>Status</th><th></th></tr></thead>
+        <tbody id="phBody"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card hidden" id="detailCard">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0" id="dTitle"></h2>
+        <button class="secondary" type="button" id="dClose">Close</button>
+      </div>
+      <p class="small muted" id="dSub"></p>
+      <h2 style="font-size:15px;margin-top:16px">Orders</h2>
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Qty</th><th>Each</th><th>Total</th><th class="hide-sm">Note</th></tr></thead><tbody id="dOrders"></tbody></table></div>
+      <h2 style="font-size:15px;margin-top:16px">Licenses</h2>
+      <div class="tablewrap"><table><thead><tr><th>Code</th><th>School</th><th>Admin</th><th>Status</th><th></th></tr></thead><tbody id="dLics"></tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h2>Look up a license code</h2>
+      <p class="small muted">Every PDF exported by a licensed school has its license code in the file's properties (in Adobe Reader or Preview: File &rarr; Document Properties, under Keywords).</p>
+      <form id="lookupForm" class="row"><input id="lookupCode" placeholder="PP-XXXX-XXXX" style="max-width:220px" required><button type="submit">Look up</button></form>
+      <div class="msg" id="lookupMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Nightly check</h2>
+      <p class="small muted">Runs every night: reminder emails a week before a school's 60 days end, a check for licensed schools that have since become YearbookLife customers, and unusual-activity alerts. You'll get an email when there's something to report.</p>
+      <button class="secondary" type="button" id="dryRunBtn">Preview tonight's check</button>
+      <pre id="dryOut" class="small hidden" style="white-space:pre-wrap;background:var(--bg);padding:12px;border-radius:8px;margin-top:12px"></pre>
+    </div>
+  </section>
+</main>
+
+<footer>PortraitPop by YearbookLife &middot; 888-680-0143</footer>
+
+<!-- ======================= DIALOGS ======================= -->
+<dialog id="dlgAddPh">
+  <h2>Add photographer</h2>
+  <form id="addPhForm" method="dialog">
+    <div class="field"><label for="phName">Name</label><input id="phName" required maxlength="80"></div>
+    <div class="field"><label for="phEmail">Email</label><input id="phEmail" type="email" required></div>
+    <div class="field"><label for="phCompany">Studio or company</label><input id="phCompany" maxlength="120"></div>
+    <div class="field"><label for="phPhone">Phone</label><input id="phPhone" maxlength="40"></div>
+    <div class="field"><label for="phNotes">Notes (staff only)</label><textarea id="phNotes" rows="2" maxlength="1000"></textarea></div>
+    <p class="small muted">They'll get a welcome email with a sign-in link. Add their licenses once their invoice is paid.</p>
+    <div class="row"><button type="submit" id="addPhSave">Add</button><button type="button" class="secondary" data-close>Cancel</button></div>
+    <div class="msg" id="addPhMsg"></div>
+  </form>
+</dialog>
+
+<dialog id="dlgLic">
+  <h2>Add licenses</h2>
+  <p class="muted" id="licFor"></p>
+  <form id="licForm" method="dialog">
+    <div class="field"><label for="licQty">How many licenses</label><input id="licQty" type="number" min="1" max="1000" required></div>
+    <div class="price" id="licPrice">Enter a quantity to see the price.</div>
+    <div class="field" id="licPriceOverrideWrap"><label for="licUnit">Price per license (only to override the tier price)</label><input id="licUnit" type="number" min="0" step="0.01" placeholder="Leave blank for tier price"></div>
+    <div class="field"><label for="licNote">Note (invoice number, etc.)</label><input id="licNote" maxlength="500"></div>
+    <div class="row"><button type="submit" id="licSave">Add licenses</button><button type="button" class="secondary" data-close>Cancel</button></div>
+    <div class="msg" id="licMsg"></div>
+  </form>
+</dialog>
+
+<dialog id="dlgReplace">
+  <h2>Change admin</h2>
+  <p class="muted" id="repFor"></p>
+  <form id="repForm" method="dialog">
+    <div class="field"><label for="repName">New admin's name</label><input id="repName" maxlength="80"></div>
+    <div class="field"><label for="repEmail">New admin's email</label><input id="repEmail" type="email" required></div>
+    <p class="small muted">The current admin loses access right away. The school keeps the same license and the same end date.</p>
+    <div class="row"><button type="submit" id="repSave">Change admin</button><button type="button" class="secondary" data-close>Cancel</button></div>
+    <div class="msg" id="repMsg"></div>
+  </form>
+</dialog>
+
+<dialog id="dlgConfirm">
+  <h2 id="cfTitle"></h2>
+  <p id="cfText"></p>
+  <div class="row"><button type="button" id="cfYes"></button><button type="button" class="secondary" data-close>Cancel</button></div>
+</dialog>
+
+<script>
+(function(){
+  'use strict';
+
+  var STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','PR','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','GU','VI'];
+  var STATUS_LABEL = { available:'Unused', invited:'Waiting for sign-in', active:'Active', expired:'Ended', revoked:'Removed' };
+
+  function $(id){ return document.getElementById(id); }
+  function show(id){ $(id).classList.remove('hidden'); }
+  function hide(id){ $(id).classList.add('hidden'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function msg(id, text, kind){ var el = $(id); el.textContent = text || ''; el.className = 'msg' + (text ? ' show ' + (kind || 'info') : ''); }
+  function fmtDate(iso){ if (!iso) return ''; return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  function money(n){ return '$' + Number(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  async function api(path, payload){
+    var opts = payload === undefined
+      ? { method:'GET', credentials:'same-origin' }
+      : { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) };
+    var r, data = {};
+    try { r = await fetch(path, opts); } catch (e) { return { ok:false, error:'Can’t reach PortraitPop. Check your internet connection.' }; }
+    try { data = await r.json(); } catch (e) { data = {}; }
+    if (!r.ok && !data.error) data.error = 'Something went wrong (' + r.status + '). Please try again.';
+    if (r.status === 401 && path !== '/api/pp-auth') { setTimeout(function(){ location.href = '/pp'; }, 1500); }
+    return data;
+  }
+
+  function busy(btn, on, label){
+    if (on){ btn.dataset.label = btn.textContent; btn.textContent = label || 'Working…'; btn.disabled = true; }
+    else { btn.textContent = btn.dataset.label || btn.textContent; btn.disabled = false; }
+  }
+
+  document.querySelectorAll('dialog [data-close]').forEach(function(b){
+    b.addEventListener('click', function(){ b.closest('dialog').close(); });
+  });
+
+  function confirmBox(title, text, yesLabel, danger){
+    return new Promise(function(resolve){
+      var d = $('dlgConfirm');
+      $('cfTitle').textContent = title; $('cfText').textContent = text;
+      var yes = $('cfYes'); yes.textContent = yesLabel;
+      yes.style.background = danger ? 'var(--red)' : '';
+      var done = function(v){ d.removeEventListener('close', onClose); yes.onclick = null; resolve(v); };
+      var onClose = function(){ done(false); };
+      yes.onclick = function(){ d.removeEventListener('close', onClose); d.close(); resolve(true); };
+      d.addEventListener('close', onClose);
+      d.showModal();
+    });
+  }
+
+  // ---------------------------------------------------------------- start
+  async function start(){
+    var token = (location.hash.match(/[#&]t=([A-Za-z0-9_-]+)/) || [])[1];
+    hide('loading');
+    if (token) return signinView(token);
+    var me = await api('/api/pp-auth');
+    if (!me.ok) { show('vLogin'); msg('loginNote', me.error, 'err'); return; }
+    if (me.role) {
+      show('who'); $('whoEmail').textContent = me.email;
+    }
+    if (me.role === 'admin') return adminView(me);
+    if (me.role === 'photographer') return photographerView();
+    if (me.role === 'staff') return staffView();
+    show('vLogin');
+    if (me.message) msg('loginNote', me.message, 'info');
+  }
+
+  $('logoutBtn').addEventListener('click', async function(){
+    await api('/api/pp-auth', { action:'logout' });
+    location.href = '/pp';
+  });
+
+  // ---------------------------------------------------------------- sign-in link
+  function signinView(token){
+    show('vSignin');
+    $('consumeBtn').addEventListener('click', async function(){
+      var btn = this; busy(btn, true, 'Signing in…');
+      var r = await api('/api/pp-auth', { action:'consume', token: token });
+      if (r.ok) { history.replaceState(null, '', '/pp'); location.href = '/pp'; return; }
+      busy(btn, false);
+      btn.classList.add('hidden');
+      msg('signinMsg', r.error || 'This link didn’t work.', 'err');
+      history.replaceState(null, '', '/pp');
+      show('vLogin');
+    });
+  }
+
+  $('loginForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = $('loginBtn'); busy(btn, true, 'Sending…');
+    var r = await api('/api/pp-auth', { action:'request-link', email: $('loginEmail').value });
+    busy(btn, false);
+    msg('loginMsg', r.message || r.error, r.ok ? 'ok' : 'err');
+  });
+
+  // ---------------------------------------------------------------- school admin
+  function adminView(me){
+    show('vAdmin');
+    $('aSchool').textContent = me.school.name;
+    var who = me.photographer.company || me.photographer.name;
+    $('aFrom').textContent = 'PortraitPop access provided by ' + who + (me.photographer.email ? ' (' + me.photographer.email + ')' : '') + '.';
+    $('aDays').textContent = me.daysLeft;
+    $('aDaysLabel').textContent = (me.daysLeft === 1 ? 'day left' : 'days left') + ' · ends ' + fmtDate(me.expiresAt);
+    $('openToolBtn').addEventListener('click', function(){
+      var w = window.open('/api/pp-tool', '_blank');
+      if (!w) location.href = '/api/pp-tool';
+    });
+  }
+
+  // ---------------------------------------------------------------- photographer
+  var schools = [];
+  function photographerView(){
+    show('vPhotog');
+    var sel = $('sState');
+    sel.innerHTML = '<option value="">Pick…</option>' + STATES.map(function(s){ return '<option>' + s + '</option>'; }).join('');
+    loadPhotographer();
+  }
+
+  async function loadPhotographer(){
+    var r = await api('/api/pp-photographer');
+    if (!r.ok) { msg('schoolsMsg', r.error, 'err'); return; }
+    var p = r.photographer;
+    $('pName').textContent = p.company ? p.company : p.name;
+    $('cAvail').textContent = r.counts.available;
+    $('cInvited').textContent = r.counts.invited;
+    $('cActive').textContent = r.counts.active;
+    $('cEnded').textContent = r.counts.expired + r.counts.revoked;
+    $('sendBtn').disabled = r.counts.available < 1;
+    if (r.counts.available < 1) msg('sendMsg', 'You have no unused licenses. Call YearbookLife at 888-680-0143 to buy more.', 'info');
+    schools = r.schools;
+    $('noSchools').classList.toggle('hidden', schools.length > 0);
+    $('schoolsBody').innerHTML = schools.map(function(s){
+      var status = '<span class="pill ' + s.state + '">' + STATUS_LABEL[s.state] + '</span>';
+      if (s.state === 'active') status += '<div class="small muted">' + s.daysLeft + ' day' + (s.daysLeft === 1 ? '' : 's') + ' left (ends ' + fmtDate(s.expiresAt) + ')</div>';
+      if (s.state === 'invited') status += '<div class="small muted">Sent ' + fmtDate(s.invitedAt) + '</div>';
+      var live = s.state === 'invited' || s.state === 'active';
+      var acts = live
+        ? '<button class="link" data-act="resend" data-id="' + s.id + '">Resend link</button>'
+          + '<button class="link" data-act="replace" data-id="' + s.id + '">Change admin</button>'
+          + (s.devices ? '<button class="link" data-act="reset" data-id="' + s.id + '">Reset devices (' + s.devices + ')</button>' : '')
+          + '<button class="link danger" data-act="remove" data-id="' + s.id + '">' + (s.state === 'invited' ? 'Cancel' : 'Remove') + '</button>'
+        : '';
+      return '<tr><td><b>' + esc(s.school.name) + '</b><div class="small muted">' + esc(s.school.city) + ', ' + esc(s.school.state) + '</div></td>'
+        + '<td>' + esc(s.admin.name || '') + '<div class="small muted">' + esc(s.admin.email) + '</div></td>'
+        + '<td>' + status + '</td><td class="hide-sm small muted">' + esc(s.code) + '</td>'
+        + '<td class="actions">' + acts + '</td></tr>';
+    }).join('');
+  }
+
+  $('sendForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = $('sendBtn'); busy(btn, true, 'Checking and sending…');
+    msg('sendMsg', '');
+    var r = await api('/api/pp-photographer', {
+      action:'send', schoolName: $('sSchool').value, city: $('sCity').value, state: $('sState').value,
+      zip: $('sZip').value, adminName: $('sAdminName').value, adminEmail: $('sAdminEmail').value
+    });
+    busy(btn, false);
+    msg('sendMsg', r.message || r.error, r.ok ? 'ok' : 'err');
+    if (r.ok) { $('sendForm').reset(); loadPhotographer(); }
+  });
+
+  var replacing = null;
+  $('schoolsBody').addEventListener('click', async function(e){
+    var b = e.target.closest('button[data-act]'); if (!b) return;
+    var s = schools.find(function(x){ return x.id === b.dataset.id; }); if (!s) return;
+    var act = b.dataset.act;
+    if (act === 'replace') {
+      replacing = s;
+      $('repFor').textContent = s.school.name + ' (currently ' + s.admin.email + ')';
+      $('repForm').reset(); msg('repMsg', '');
+      $('dlgReplace').showModal();
+      return;
+    }
+    var payload = { licenseId: s.id };
+    if (act === 'resend') payload.action = 'resend';
+    if (act === 'reset') {
+      if (!await confirmBox('Reset devices?', 'This signs ' + (s.admin.name || s.admin.email) + ' out everywhere and lets them sign in on up to two computers again.', 'Reset devices')) return;
+      payload.action = 'reset-devices';
+    }
+    if (act === 'remove') {
+      var text = s.state === 'invited'
+        ? 'Cancel the invitation for ' + s.school.name + '? They haven’t signed in yet, so the license goes back to your account.'
+        : 'Remove access for ' + s.school.name + '? ' + (s.admin.email) + ' will lose access right away. This license has been used, so it does not come back to your account.';
+      if (!await confirmBox(s.state === 'invited' ? 'Cancel invitation?' : 'Remove access?', text, s.state === 'invited' ? 'Cancel invitation' : 'Remove access', true)) return;
+      payload.action = 'remove';
+    }
+    b.disabled = true;
+    var r = await api('/api/pp-photographer', payload);
+    b.disabled = false;
+    msg('schoolsMsg', r.message || r.error, r.ok ? 'ok' : 'err');
+    if (r.ok) loadPhotographer();
+  });
+
+  $('repForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    if (!replacing) return;
+    var btn = $('repSave'); busy(btn, true, 'Checking…');
+    var r = await api('/api/pp-photographer', { action:'replace', licenseId: replacing.id, adminName: $('repName').value, adminEmail: $('repEmail').value });
+    busy(btn, false);
+    if (!r.ok) { msg('repMsg', r.error, 'err'); return; }
+    $('dlgReplace').close();
+    msg('schoolsMsg', r.message, 'ok');
+    loadPhotographer();
+  });
+
+  // ---------------------------------------------------------------- staff
+  var photographers = [];
+  var licTarget = null;
+  function staffView(){ show('vStaff'); loadStaff(); }
+
+  function tierPrice(q){ if (q < 1) return null; if (q <= 4) return 80; if (q <= 19) return 75; if (q <= 49) return 70; if (q <= 99) return 65; if (q <= 199) return 60; return null; }
+
+  async function loadStaff(){
+    var r = await api('/api/pp-staff');
+    if (!r.ok) { msg('staffMsg', r.error, 'err'); return; }
+    photographers = r.photographers;
+    $('phBody').innerHTML = photographers.map(function(p){
+      var c = p.counts;
+      return '<tr><td><b>' + esc(p.name) + '</b>' + (p.company ? ' <span class="muted">· ' + esc(p.company) + '</span>' : '')
+        + '<div class="small muted">' + esc(p.email) + (p.phone ? ' · ' + esc(p.phone) : '') + '</div></td>'
+        + '<td>' + c.available + '</td><td>' + c.invited + '</td><td>' + c.active + '</td><td class="hide-sm">' + (c.expired + c.revoked) + '</td>'
+        + '<td><span class="pill ' + (p.status === 'active' ? 'active' : 'suspended') + '">' + (p.status === 'active' ? 'Active' : 'Suspended') + '</span></td>'
+        + '<td class="actions"><button class="link" data-act="lic" data-id="' + p.id + '">Add licenses</button>'
+        + '<button class="link" data-act="detail" data-id="' + p.id + '">Details</button>'
+        + '<button class="link" data-act="welcome" data-id="' + p.id + '">Resend welcome</button>'
+        + '<button class="link' + (p.status === 'active' ? ' danger' : '') + '" data-act="status" data-id="' + p.id + '">' + (p.status === 'active' ? 'Suspend' : 'Reactivate') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="muted">No photographers yet.</td></tr>';
+
+    var parts = [];
+    r.flagged.forEach(function(f){
+      var flagLabel = /^Now matches/.test(f.detail || '') ? 'Now a YearbookLife school (access not changed):' : 'Possible YearbookLife school:';
+      parts.push('<div class="alert"><b>' + flagLabel + '</b> ' + esc(f.school) + ' · ' + esc(f.photographer) + ' · ' + esc(f.code) + '<div class="small muted">' + esc(f.detail) + ' (' + fmtDate(f.at) + ')</div></div>');
+    });
+    r.alerts.forEach(function(a){
+      var label = { 'blocked-ybl':'Blocked: YearbookLife school', 'device-limit':'Device limit reached', 'unusual-activity':'Unusual activity' }[a.kind] || a.kind;
+      var d = a.detail || {};
+      var info = a.kind === 'blocked-ybl' ? ((d.school && d.school.name) ? d.school.name + ' · ' : '') + (d.detail || '')
+               : a.kind === 'unusual-activity' ? (d.why || []).join(', ') : (a.email || '');
+      parts.push('<div class="alert"><b>' + esc(label) + '</b> · ' + esc(a.photographer) + '<div class="small muted">' + esc(info) + ' (' + fmtDate(a.at) + ')</div></div>');
+    });
+    $('alertsBody').innerHTML = parts.length ? parts.join('') : '<p class="muted small">Nothing right now.</p>';
+  }
+
+  $('addPhBtn').addEventListener('click', function(){ $('addPhForm').reset(); msg('addPhMsg', ''); $('dlgAddPh').showModal(); });
+  $('addPhForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = $('addPhSave'); busy(btn, true, 'Adding…');
+    var r = await api('/api/pp-staff', { action:'add-photographer', name: $('phName').value, email: $('phEmail').value, company: $('phCompany').value, phone: $('phPhone').value, notes: $('phNotes').value });
+    busy(btn, false);
+    if (!r.ok) { msg('addPhMsg', r.error, 'err'); return; }
+    $('dlgAddPh').close(); msg('staffMsg', r.message, 'ok'); loadStaff();
+  });
+
+  function updatePrice(){
+    var q = Math.floor(Number($('licQty').value) || 0);
+    var override = $('licUnit').value;
+    var unit = override !== '' ? Number(override) : tierPrice(q);
+    if (q < 1) { $('licPrice').textContent = 'Enter a quantity to see the price.'; return; }
+    if (unit === null) { $('licPrice').innerHTML = '<b>200 or more is "call for pricing."</b> Enter the agreed price per license below.'; return; }
+    $('licPrice').innerHTML = q + ' × ' + money(unit) + ' = <b>' + money(unit * q) + '</b>' + (override !== '' ? ' (custom price)' : ' (tier price)');
+  }
+  $('licQty').addEventListener('input', updatePrice);
+  $('licUnit').addEventListener('input', updatePrice);
+  $('licForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    if (!licTarget) return;
+    var btn = $('licSave'); busy(btn, true, 'Adding…');
+    var payload = { action:'add-licenses', photographerId: licTarget.id, quantity: $('licQty').value, note: $('licNote').value };
+    if ($('licUnit').value !== '') payload.unitPrice = $('licUnit').value;
+    var r = await api('/api/pp-staff', payload);
+    busy(btn, false);
+    if (!r.ok) { msg('licMsg', r.error, 'err'); return; }
+    $('dlgLic').close(); msg('staffMsg', r.message, 'ok'); loadStaff();
+  });
+
+  $('phBody').addEventListener('click', async function(e){
+    var b = e.target.closest('button[data-act]'); if (!b) return;
+    var p = photographers.find(function(x){ return x.id === b.dataset.id; }); if (!p) return;
+    var act = b.dataset.act;
+    if (act === 'lic') {
+      licTarget = p; $('licForm').reset(); msg('licMsg', '');
+      $('licFor').textContent = 'For ' + p.name + (p.company ? ' (' + p.company + ')' : '') + '. Add these once the invoice is paid. They’ll get an email.';
+      updatePrice(); $('dlgLic').showModal(); return;
+    }
+    if (act === 'detail') return loadDetail(p.id);
+    var r;
+    if (act === 'welcome') { b.disabled = true; r = await api('/api/pp-staff', { action:'resend-welcome', photographerId: p.id }); b.disabled = false; }
+    if (act === 'status') {
+      var suspend = p.status === 'active';
+      if (!await confirmBox(suspend ? 'Suspend ' + p.name + '?' : 'Reactivate ' + p.name + '?',
+        suspend ? 'They and every school admin using their licenses will be signed out and unable to export until you reactivate them.' : 'They and their schools can use PortraitPop again.',
+        suspend ? 'Suspend' : 'Reactivate', suspend)) return;
+      r = await api('/api/pp-staff', { action:'set-status', photographerId: p.id, status: suspend ? 'suspended' : 'active' });
+    }
+    if (r) { msg('staffMsg', r.message || r.error, r.ok ? 'ok' : 'err'); if (r.ok) loadStaff(); }
+  });
+
+  var detailId = null;
+  async function loadDetail(id){
+    detailId = id;
+    var r = await api('/api/pp-staff', { action:'detail', photographerId: id });
+    if (!r.ok) { msg('staffMsg', r.error, 'err'); return; }
+    var p = r.photographer;
+    show('detailCard');
+    $('dTitle').textContent = p.name + (p.company ? ' · ' + p.company : '');
+    $('dSub').textContent = p.email + (p.phone ? ' · ' + p.phone : '') + ' · added ' + fmtDate(p.created_at) + (p.notes ? ' · ' + p.notes : '');
+    $('dOrders').innerHTML = r.orders.map(function(o){
+      return '<tr><td>' + fmtDate(o.created_at) + '</td><td>' + o.quantity + '</td><td>' + money(o.unit_price) + '</td><td>' + money(o.total) + '</td><td class="hide-sm small">' + esc(o.note) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="muted">No orders yet.</td></tr>';
+    var lics = r.licenses.filter(function(l){ return l.state !== 'available'; });
+    var unused = r.licenses.length - lics.length;
+    $('dLics').innerHTML = lics.map(function(l){
+      var st = '<span class="pill ' + l.state + '">' + STATUS_LABEL[l.state] + '</span>';
+      if (l.state === 'active') st += '<div class="small muted">' + l.daysLeft + ' days left</div>';
+      return '<tr><td class="small">' + esc(l.code) + '</td><td>' + esc(l.school_name) + '<div class="small muted">' + esc(l.school_city) + ', ' + esc(l.school_state) + '</div></td>'
+        + '<td class="small">' + esc(l.admin_email) + '</td><td>' + st + '</td>'
+        + '<td>' + ((l.state === 'active' || l.state === 'invited') ? '<button class="link danger" data-cancel="' + l.id + '" data-code="' + esc(l.code) + '">Cancel</button>' : '') + '</td></tr>';
+    }).join('') + '<tr><td colspan="5" class="muted small">' + unused + ' unused license' + (unused === 1 ? '' : 's') + '</td></tr>';
+    $('detailCard').scrollIntoView({ behavior:'smooth' });
+  }
+  $('dClose').addEventListener('click', function(){ hide('detailCard'); });
+  $('dLics').addEventListener('click', async function(e){
+    var b = e.target.closest('button[data-cancel]'); if (!b) return;
+    if (!await confirmBox('Cancel license ' + b.dataset.code + '?', 'The school loses access right away. The license is not returned to the photographer.', 'Cancel license', true)) return;
+    var r = await api('/api/pp-staff', { action:'cancel-license', licenseId: b.dataset.cancel });
+    msg('staffMsg', r.message || r.error, r.ok ? 'ok' : 'err');
+    if (r.ok) { loadDetail(detailId); loadStaff(); }
+  });
+
+  $('lookupForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var r = await api('/api/pp-staff', { action:'lookup', code: $('lookupCode').value });
+    if (!r.ok) { msg('lookupMsg', r.error, 'err'); return; }
+    var l = r.license, p = r.photographer || {};
+    msg('lookupMsg', l.code + ': ' + (l.school_name || '(not sent to a school yet)') + (l.school_city ? ', ' + l.school_city + ', ' + l.school_state : '')
+      + ' · admin ' + (l.admin_email || '-') + ' · ' + STATUS_LABEL[l.state] + ' · photographer ' + (p.name || '?') + ' (' + (p.email || '') + ') · ' + r.exportCount + ' exports', 'info');
+  });
+
+  $('dryRunBtn').addEventListener('click', async function(){
+    var btn = this; busy(btn, true, 'Running preview…');
+    var r = await api('/api/pp-cron?dry=1');
+    busy(btn, false);
+    var out = $('dryOut'); out.classList.remove('hidden');
+    if (!r.ok) { out.textContent = r.error || 'Preview failed.'; return; }
+    var lines = [];
+    function sec(t, a){ lines.push(t + ': ' + (a.length ? '' : 'none')); a.forEach(function(x){ lines.push('  • ' + x); }); }
+    sec('Schools now with YearbookLife', r.yblMatches || []);
+    sec('Unusual activity', r.unusual || []);
+    sec('Reminders to send', r.reminders || []);
+    sec('Notes', r.notes || []);
+    out.textContent = lines.join('\n');
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>
