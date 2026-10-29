@@ -150,7 +150,10 @@ async function inviteAdmin(req: VercelRequest, ph: any, lic: any): Promise<boole
   const hello = lic.admin_name ? 'Hi ' + esc(lic.admin_name.split(' ')[0]) + ',' : 'Hello,';
   const timing = licenseState(lic) === 'active'
     ? '<p>Your access runs until <b>' + esc(new Date(lic.expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })) + '</b>.</p>'
-    : '<p>Your access lasts <b>' + LICENSE_DAYS + ' days</b>, starting the first time you sign in, so sign in when you are ready to build your portrait pages.</p>';
+    : '<p>Your access lasts <b>' + LICENSE_DAYS + ' days</b>, starting the first time you sign in.</p>'
+      + '<div style="background:#FFF4E5;border-left:4px solid #FF6B00;border-radius:8px;padding:12px 16px;margin:16px 0">'
+      + '<b>Please wait to sign in</b> until you have all of your school’s portrait files in hand, including retakes. '
+      + 'Your ' + LICENSE_DAYS + ' days start the moment you first sign in.</div>';
   const html = emailLayout(base, 'You’re set up to use PortraitPop',
     '<p>' + hello + '</p>'
     + '<p><b>' + esc(from) + '</b> has given <b>' + esc(lic.school_name) + '</b> access to PortraitPop, '
@@ -240,7 +243,7 @@ async function send(req: VercelRequest, res: VercelResponse, ph: any, b: any) {
   return res.status(200).json({
     ok: true,
     message: sent
-      ? 'License sent. ' + adminEmail + ' will get an email to sign in. Their ' + LICENSE_DAYS + ' days start the first time they sign in.'
+      ? 'License sent. ' + adminEmail + ' will get an email to sign in. Their ' + LICENSE_DAYS + ' days start the first time they sign in, so let them know to wait until they have all portrait files, including retakes.'
       : 'License assigned, but the email didn’t send. Click Resend link on that school.'
   });
 }

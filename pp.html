@@ -55,6 +55,7 @@
   .msg.ok{background:var(--greenbg);color:var(--green)}
   .msg.err{background:var(--redbg);color:var(--red)}
   .msg.info{background:var(--aqua);color:var(--navy)}
+  .heads-up{background:#FFF4E5;border-left:4px solid #FF6B00;border-radius:8px;padding:12px 16px;margin:14px 0;font-size:14px;text-align:left}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .stat b{display:block;font-size:26px;line-height:1.1}
@@ -101,6 +102,7 @@
     <div class="card narrow center">
       <h1>Sign in to PortraitPop</h1>
       <p class="muted">Click below to finish signing in on this computer.</p>
+      <div class="heads-up"><b>School yearbook admins:</b> your school’s 60 days start the first time you sign in. Please wait until you have all of your portrait files in hand, including retakes.</div>
       <button class="big" id="consumeBtn" type="button">Sign in</button>
       <div class="msg" id="signinMsg"></div>
     </div>
@@ -160,7 +162,8 @@
 
     <div class="card">
       <h2>Send a license to a school</h2>
-      <p class="small muted">Uses one unused license. The school's 60 days start the first time the admin signs in. Schools that already work with YearbookLife can't be licensed; if that happens, no license is used.</p>
+      <div class="heads-up"><b>Before you send:</b> the school's 60 days start the first time the admin signs in. Let them know to wait until they have all portrait files in hand, including retakes.</div>
+      <p class="small muted">Uses one unused license. Schools that already work with YearbookLife can't be licensed; if that happens, no license is used.</p>
       <form id="sendForm">
         <div class="grid">
           <div class="field" style="grid-column:1/-1"><label for="sSchool">School name</label><input id="sSchool" required maxlength="120" placeholder="e.g. Lincoln High School"></div>
