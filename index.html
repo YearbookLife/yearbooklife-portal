@@ -1257,6 +1257,18 @@
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const dealId = urlParams.get('dealId');
+
+    // The logged-in person's Supabase access token. checkAccess() sets this as
+    // soon as the session is confirmed, and every call to our own API sends it
+    // so the SERVER can verify who is asking. Without it those routes answer
+    // 401: the server no longer takes the browser's word for who you are.
+    let portalAccessToken = '';
+
+    function authHeaders(extra) {
+      const h = extra || {};
+      if (portalAccessToken) h['Authorization'] = 'Bearer ' + portalAccessToken;
+      return h;
+    }
     
     // Placeholder for customer data - will be filled from HubSpot API
     let customerData = {
@@ -1299,7 +1311,7 @@
       }
 
       try {
-        const response = await fetch(`/api/hubspot-deal?dealId=${dealId}`);
+        const response = await fetch(`/api/hubspot-deal?dealId=${dealId}`, { headers: authHeaders() });
         
         if (!response.ok) {
           console.error('Failed to fetch deal from HubSpot:', response.statusText);
@@ -1345,6 +1357,9 @@
           return false;
         }
 
+        // Hold on to the token so our own API calls can prove who we are.
+        portalAccessToken = session.access_token || '';
+
         const email = session.user.email;
 
         // No dealId in the URL -> send them through the normal login routing
@@ -1354,7 +1369,9 @@
         }
 
         // Check that this dealId belongs to the logged-in person
-        const resp = await fetch('/api/find-my-deals?email=' + encodeURIComponent(email));
+        // No email in the URL any more - the server reads it from the token,
+        // so nobody can ask about somebody else's account.
+        const resp = await fetch('/api/find-my-deals', { headers: authHeaders() });
         const data = await resp.json();
         const deals = (data && data.deals) ? data.deals : [];
         const allowed = deals.some(function(d) { return String(d.dealId) === String(dealId); });
@@ -1590,7 +1607,7 @@
       try {
         await fetch('/api/save-progress', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ dealId: dealId, progress: value })
         });
       } catch (err) {

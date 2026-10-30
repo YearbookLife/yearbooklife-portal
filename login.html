@@ -193,7 +193,15 @@
     // After login: find active deals for this email and route accordingly
     async function routeToDashboard(email) {
       try {
-        const resp = await fetch('/api/find-my-deals?email=' + encodeURIComponent(email));
+        // The server identifies the caller from their session token, not from
+        // an email in the URL, so the token has to travel with the request.
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const headers = {};
+        if (session && session.access_token) {
+          headers['Authorization'] = 'Bearer ' + session.access_token;
+        }
+
+        const resp = await fetch('/api/find-my-deals', { headers: headers });
         const data = await resp.json();
         const deals = (data && data.deals) ? data.deals : [];
 
