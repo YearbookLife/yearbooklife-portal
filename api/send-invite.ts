@@ -26,21 +26,76 @@ function isActivatedPortal(raw: any): boolean {
 
 // Delete any existing Supabase login for this email before sending a fresh invite
 // (clean slate for returning admins; harmless no-op for first-time customers).
-async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
-  try {
-    const listResp = await fetch(
-      supabaseUrl + '/auth/v1/admin/users?email=' + encodeURIComponent(email),
+/**
+ * Find a Supabase login by email address.
+ *
+ * Supabase's admin users endpoint has NO "find by email" filter. Passing
+ * ?email=... is silently ignored and you get back the FIRST PAGE of every user
+ * in the project. The previous version of this code searched only that page, so
+ * once the portal had more logins than fit on one page it reported "no such
+ * user" for almost everybody. The delete was then skipped and the invite that
+ * followed was rejected as already registered - which is why returning admins
+ * stopped receiving their links.
+ *
+ * Returns the user id, null when the address genuinely has no login, and throws
+ * when the lookup itself failed, so callers can tell "not there" apart from
+ * "could not tell".
+ */
+async function findUserByEmail(supabaseUrl: string, serviceKey: string, email: string): Promise<string | null> {
+  const PER_PAGE = 1000;   // Supabase's maximum
+  const MAX_PAGES = 25;    // 25,000 logins; far beyond anything expected here
+  const target = String(email || '').trim().toLowerCase();
+  if (!target) return null;
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const resp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users?per_page=' + PER_PAGE + '&page=' + page,
       { headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
     );
-    if (!listResp.ok) return 'lookup-failed';
-    const data = await listResp.json();
+    if (!resp.ok) {
+      throw new Error('Supabase user lookup returned status ' + resp.status);
+    }
+
+    const data = await resp.json();
     const users = (data && data.users) ? data.users : (Array.isArray(data) ? data : []);
+
     const match = users.find(function (u: any) {
-      return String(u.email || '').trim().toLowerCase() === email;
+      return String(u.email || '').trim().toLowerCase() === target;
     });
-    if (!match || !match.id) return 'no-existing-user';
+    if (match && match.id) return String(match.id);
+
+    // A short page means that was the last one.
+    if (users.length < PER_PAGE) return null;
+  }
+
+  throw new Error('Supabase user lookup gave up after ' + MAX_PAGES + ' pages');
+}
+
+/**
+ * Clear any existing Supabase login so a fresh invite creates a clean one.
+ *
+ * Return values are unchanged from before, so every caller keeps working:
+ *   'deleted-existing' | 'no-existing-user' | 'lookup-failed' |
+ *   'delete-failed'    | 'delete-error'
+ *
+ * The important distinction is 'no-existing-user' (we looked properly and there
+ * is none) versus 'lookup-failed' (we could not find out). Callers must not
+ * treat the second as the first.
+ */
+async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
+  let userId: string | null;
+  try {
+    userId = await findUserByEmail(supabaseUrl, serviceKey, email);
+  } catch (e) {
+    console.error('deleteExistingUser: lookup failed for', email, e instanceof Error ? e.message : e);
+    return 'lookup-failed';
+  }
+
+  if (!userId) return 'no-existing-user';
+
+  try {
     const delResp = await fetch(
-      supabaseUrl + '/auth/v1/admin/users/' + match.id,
+      supabaseUrl + '/auth/v1/admin/users/' + userId,
       { method: 'DELETE', headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
     );
     return delResp.ok ? 'deleted-existing' : 'delete-failed';
@@ -161,7 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Clear any existing login first (clean slate for returning admins)
-    await deleteExistingUser(supabaseUrl, serviceKey, adminEmail);
+    const delResult = await deleteExistingUser(supabaseUrl, serviceKey, adminEmail);
 
     // 3) Tell Supabase to send the invite (magic link) to that email
     const inviteResp = await fetch(`${supabaseUrl}/auth/v1/invite`, {
@@ -183,6 +238,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dealId,
         adminEmail,
         inviteStatus: inviteResp.status,
+        deleteResult: delResult,
         inviteDetail: inviteText.substring(0, 300)
       });
     }

@@ -61,24 +61,76 @@ function isActivatedPortal(raw: any): boolean {
 // login for this email so the customer gets a clean new setup. This is safe for
 // everyone: first-time customers have no existing login (nothing happens); returning
 // customers get their old login cleared so the new invite creates a fresh one.
-async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
-  try {
-    // Look up the user by email via the admin API
-    const listResp = await fetch(
-      supabaseUrl + '/auth/v1/admin/users?email=' + encodeURIComponent(email),
+/**
+ * Find a Supabase login by email address.
+ *
+ * Supabase's admin users endpoint has NO "find by email" filter. Passing
+ * ?email=... is silently ignored and you get back the FIRST PAGE of every user
+ * in the project. The previous version of this code searched only that page, so
+ * once the portal had more logins than fit on one page it reported "no such
+ * user" for almost everybody. The delete was then skipped and the invite that
+ * followed was rejected as already registered - which is why returning admins
+ * stopped receiving their links.
+ *
+ * Returns the user id, null when the address genuinely has no login, and throws
+ * when the lookup itself failed, so callers can tell "not there" apart from
+ * "could not tell".
+ */
+async function findUserByEmail(supabaseUrl: string, serviceKey: string, email: string): Promise<string | null> {
+  const PER_PAGE = 1000;   // Supabase's maximum
+  const MAX_PAGES = 25;    // 25,000 logins; far beyond anything expected here
+  const target = String(email || '').trim().toLowerCase();
+  if (!target) return null;
+
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const resp = await fetch(
+      supabaseUrl + '/auth/v1/admin/users?per_page=' + PER_PAGE + '&page=' + page,
       { headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
     );
-    if (!listResp.ok) return 'lookup-failed';
-    const data = await listResp.json();
-    const users = (data && data.users) ? data.users : (Array.isArray(data) ? data : []);
-    const match = users.find(function (u: any) {
-      return String(u.email || '').trim().toLowerCase() === email;
-    });
-    if (!match || !match.id) return 'no-existing-user';
+    if (!resp.ok) {
+      throw new Error('Supabase user lookup returned status ' + resp.status);
+    }
 
-    // Delete that user
+    const data = await resp.json();
+    const users = (data && data.users) ? data.users : (Array.isArray(data) ? data : []);
+
+    const match = users.find(function (u: any) {
+      return String(u.email || '').trim().toLowerCase() === target;
+    });
+    if (match && match.id) return String(match.id);
+
+    // A short page means that was the last one.
+    if (users.length < PER_PAGE) return null;
+  }
+
+  throw new Error('Supabase user lookup gave up after ' + MAX_PAGES + ' pages');
+}
+
+/**
+ * Clear any existing Supabase login so a fresh invite creates a clean one.
+ *
+ * Return values are unchanged from before, so every caller keeps working:
+ *   'deleted-existing' | 'no-existing-user' | 'lookup-failed' |
+ *   'delete-failed'    | 'delete-error'
+ *
+ * The important distinction is 'no-existing-user' (we looked properly and there
+ * is none) versus 'lookup-failed' (we could not find out). Callers must not
+ * treat the second as the first.
+ */
+async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email: string): Promise<string> {
+  let userId: string | null;
+  try {
+    userId = await findUserByEmail(supabaseUrl, serviceKey, email);
+  } catch (e) {
+    console.error('deleteExistingUser: lookup failed for', email, e instanceof Error ? e.message : e);
+    return 'lookup-failed';
+  }
+
+  if (!userId) return 'no-existing-user';
+
+  try {
     const delResp = await fetch(
-      supabaseUrl + '/auth/v1/admin/users/' + match.id,
+      supabaseUrl + '/auth/v1/admin/users/' + userId,
       { method: 'DELETE', headers: { 'apikey': serviceKey, 'Authorization': 'Bearer ' + serviceKey } }
     );
     return delResp.ok ? 'deleted-existing' : 'delete-failed';
@@ -390,7 +442,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // as an error so it retries tomorrow instead of being stamped as sent.
       const deleteFailed = (delResult === 'delete-failed' || delResult === 'lookup-failed' || delResult === 'delete-error');
 
-      if (inviteOk || (alreadyExists && !deleteFailed)) {
+      // Supabase saying "already registered" when we believed there was NO login
+      // is a contradiction: it means the lookup missed an existing user, so the
+      // delete was skipped and no email was sent. Stamping here would mark the
+      // customer as invited and they would never be retried - the silent failure
+      // that stopped returning admins getting their links.
+      const staleLoginBlocked = (alreadyExists && delResult === 'no-existing-user');
+
+      if (inviteOk || (alreadyExists && !deleteFailed && !staleLoginBlocked)) {
         const now = new Date();
         const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
         await hs(`/crm/v3/objects/deals/${dealId}`, hubspotToken, {
