@@ -1,11 +1,113 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
+/**
+ * DEAL DATA FOR THE DASHBOARD
+ *
+ * Returns the contract details the dashboard displays.
+ *
+ * This route is only for a signed-in adviser asking for THEIR OWN deal. Two
+ * things are checked on the server before any data is returned:
+ *
+ *   1. The caller holds a valid Supabase session (proves who they are).
+ *   2. That person is the Admin contact on the deal they asked for
+ *      (proves they are allowed to see it).
+ *
+ * The dashboard also checks this in the browser, but a browser check only
+ * tidies up what a user sees. It cannot protect anything, because anyone can
+ * call this address directly and never load the dashboard page at all. The
+ * check below is the one that actually matters.
+ */
+
+const HS = 'https://api.hubapi.com';
+
+async function hs(path: string, token: string, options: any = {}) {
+  return fetch(HS + path, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+}
+
+/** Pulls the caller's Supabase access token out of the Authorization header. */
+function bearerToken(req: VercelRequest): string {
+  const h = String(req.headers.authorization || '');
+  return h.toLowerCase().indexOf('bearer ') === 0 ? h.slice(7).trim() : '';
+}
+
+/**
+ * Confirms the caller is signed into the portal, by asking Supabase to
+ * validate the token. Returns their verified email, or null.
+ *
+ * Deliberately fails closed: a missing token, an expired one, a forged one or
+ * an unreachable Supabase all return null, and the caller gets a 401.
+ */
+async function callerEmail(req: VercelRequest): Promise<string | null> {
+  try {
+    const url = process.env.SUPABASE_URL;
+    const anon = process.env.SUPABASE_ANON_KEY;
+    const accessToken = bearerToken(req);
+    if (!url || !anon || !accessToken) return null;
+
+    const resp = await fetch(url + '/auth/v1/user', {
+      headers: { 'apikey': anon, 'Authorization': 'Bearer ' + accessToken }
+    });
+    if (!resp.ok) return null;
+
+    const user = await resp.json();
+    const email = user && user.email ? String(user.email).trim().toLowerCase() : '';
+    return email || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * "P-yb" is the internal HubSpot value for the "Admin" label on Yearbook Title.
+ * Co-Admin ("Co-Chair") deliberately does NOT count, matching find-my-deals.
+ */
+function isAdmin(yearbookTitle: any): boolean {
+  const tags = String(yearbookTitle || '').split(/[,;]/).map(t => t.trim().toLowerCase());
+  return tags.indexOf('p-yb') !== -1;
+}
+
+/**
+ * Is this email the Admin contact on this deal?
+ *
+ * Walks deal -> associated contacts -> match on email + Admin tag. Going in
+ * this direction costs fewer HubSpot calls than listing all of someone's deals
+ * when we only care about one.
+ */
+async function ownsDeal(email: string, dealId: string, token: string): Promise<boolean> {
+  try {
+    const assocResp = await hs(`/crm/v3/objects/deals/${dealId}/associations/contacts`, token);
+    if (!assocResp.ok) return false;
+    const refs = (await assocResp.json()).results || [];
+
+    for (const ref of refs) {
+      const contactId = ref.toObjectId || ref.id;
+      if (!contactId) continue;
+
+      const cResp = await hs(`/crm/v3/objects/contacts/${contactId}?properties=email,yearbook_title`, token);
+      if (!cResp.ok) continue;
+
+      const props = (await cResp.json()).properties || {};
+      if (String(props.email || '').trim().toLowerCase() !== email) continue;
+      if (isAdmin(props.yearbook_title)) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  // Same-origin only. No Access-Control-Allow-Origin header is sent, so another
+  // website cannot read the response from a visitor's browser. Note this stops
+  // browsers, not command-line tools - the auth check below is the real guard.
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -13,29 +115,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const dealId = req.query.dealId as string;
+    const dealId = String(req.query.dealId || '').trim();
 
     if (!dealId) {
       return res.status(400).json({ error: 'dealId parameter required' });
     }
 
     const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
-
     if (!accessToken) {
-      return res.status(400).json({
-        error: 'HubSpot access token not configured. Please set HUBSPOT_ACCESS_TOKEN environment variable.'
-      });
+      return res.status(500).json({ error: 'Server not configured' });
     }
 
-    const dealResponse = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,cover_due_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,books_shipping_address,books_shipping_address_2,books_shipping_city,books_shipping_state,books_shipping_zip,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canva_google_drive,canva_submission_form_link,canvacoverdimensions,cover_width,cover_height,cover_gap,urgent_portal_message,portal_message_title,portal_message_type,final_review_completed,book_progress`,
-      {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
+    // ---- 1. Who is calling? -------------------------------------------
+    const email = await callerEmail(req);
+    if (!email) {
+      return res.status(401).json({ error: 'Please log in to your dashboard.' });
+    }
+
+    // ---- 2. Is this deal theirs? --------------------------------------
+    const allowed = await ownsDeal(email, dealId, accessToken);
+    if (!allowed) {
+      // Same message either way, so this cannot be used to discover which
+      // deal IDs exist.
+      return res.status(403).json({ error: 'This dashboard is not associated with your account.' });
+    }
+
+    // ---- 3. Safe to return the data -----------------------------------
+    const dealResponse = await hs(
+      `/crm/v3/objects/deals/${dealId}?properties=dealname,plan_choice,submit_date,cover_due_date,final___of_books,final___of_pages,final_binding_type,book_size,paper_weight,delivery_est_,final_base_price_per_book,multi_year_term,contract_shipping,books_shipping_address,books_shipping_address_2,books_shipping_city,books_shipping_state,books_shipping_zip,optional_item_1,optional_item_1_price,optional_item_2,optional_item_2_price,optional_item_3,optional_item_3_price,invoiceurl,canva_google_drive,canva_submission_form_link,canvacoverdimensions,cover_width,cover_height,cover_gap,urgent_portal_message,portal_message_title,portal_message_type,final_review_completed,book_progress`,
+      accessToken
     );
 
     if (!dealResponse.ok) {

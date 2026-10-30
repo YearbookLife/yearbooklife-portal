@@ -23,18 +23,54 @@ function isAdmin(yearbookTitle: any): boolean {
   return tags.indexOf('p-yb') !== -1; // "P-yb" is the internal value for the "Admin" label
 }
 
+/** Pulls the caller's Supabase access token out of the Authorization header. */
+function bearerToken(req: VercelRequest): string {
+  const h = String(req.headers.authorization || '');
+  return h.toLowerCase().indexOf('bearer ') === 0 ? h.slice(7).trim() : '';
+}
+
+/**
+ * Confirms the caller is signed into the portal. Returns their verified
+ * email, or null. Fails closed.
+ */
+async function callerEmail(req: VercelRequest): Promise<string | null> {
+  try {
+    const url = process.env.SUPABASE_URL;
+    const anon = process.env.SUPABASE_ANON_KEY;
+    const accessToken = bearerToken(req);
+    if (!url || !anon || !accessToken) return null;
+
+    const resp = await fetch(url + '/auth/v1/user', {
+      headers: { 'apikey': anon, 'Authorization': 'Bearer ' + accessToken }
+    });
+    if (!resp.ok) return null;
+
+    const user = await resp.json();
+    const e = user && user.email ? String(user.email).trim().toLowerCase() : '';
+    return e || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Same-origin only; no Access-Control-Allow-Origin header is sent.
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   try {
-    const email = ((req.query.email as string) || '').trim().toLowerCase();
     const token = process.env.HUBSPOT_ACCESS_TOKEN;
-    if (!email) return res.status(400).json({ error: 'email required' });
-    if (!token) return res.status(400).json({ error: 'HubSpot token not configured' });
+
+    // The email comes from the VERIFIED session, never from the query string.
+    // This route writes to HubSpot, so it must not act on an email that the
+    // caller simply typed.
+    const email = await callerEmail(req);
+    if (!email) {
+      return res.status(401).json({ error: 'Please log in to your dashboard.' });
+    }
+
+    if (!token) return res.status(500).json({ error: 'Server not configured' });
 
     // Find the admin contact(s) for this email
     const searchResp = await hs('/crm/v3/objects/contacts/search', token, {
