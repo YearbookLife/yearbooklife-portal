@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import crypto from 'crypto';
 
 const HS = 'https://api.hubapi.com';
 
@@ -48,12 +49,54 @@ async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// STAFF / AUTOMATION GUARD
+//
+// This route is not for customers. It is triggered by Vercel's scheduler or by
+// a member of staff, so it is protected by a shared secret rather than a login.
+//
+// The secret is accepted two ways:
+//   - "Authorization: Bearer <secret>"  (how Vercel's scheduler sends it)
+//   - "?secret=<secret>"                (so it can still be run by hand)
+//
+// Deliberately backwards compatible: if CRON_SECRET is not set in the
+// environment the route behaves exactly as it did before and logs a warning.
+// Deploying this code therefore changes nothing until the variable is added,
+// and deleting the variable is an instant rollback if anything misbehaves.
+// ---------------------------------------------------------------------------
+function sameSecret(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch (e) {
+    return false;
+  }
+}
+
+function staffAuthorised(req: VercelRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    console.warn('CRON_SECRET is not set - this route is currently unprotected');
+    return true;
+  }
+  const h = String(req.headers.authorization || '');
+  const fromHeader = h.toLowerCase().indexOf('bearer ') === 0 ? h.slice(7).trim() : '';
+  const fromQuery = String(req.query.secret || '').trim();
+  return sameSecret(fromHeader, secret) || sameSecret(fromQuery, secret);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Same-origin only; no Access-Control-Allow-Origin header is sent.
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+
+  // This route deletes a customer's login and emails them a new one. It is a
+  // staff / webhook action, never something a visitor may trigger.
+  if (!staffAuthorised(req)) {
+    return res.status(401).json({ error: 'Not authorised' });
+  }
 
   const hubspotToken = process.env.HUBSPOT_ACCESS_TOKEN;
   const supabaseUrl = process.env.SUPABASE_URL;
