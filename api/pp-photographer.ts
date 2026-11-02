@@ -243,7 +243,7 @@ async function send(req: VercelRequest, res: VercelResponse, ph: any, b: any) {
   return res.status(200).json({
     ok: true,
     message: sent
-      ? 'License sent. ' + adminEmail + ' will get an email to sign in. Their ' + LICENSE_DAYS + ' days start the first time they sign in, so let them know to wait until they have all portrait files, including retakes.'
+      ? 'License sent. ' + adminEmail + ' will get an email to sign in. Their ' + LICENSE_DAYS + ' days start the first time they sign in. The email link works for 7 days; after that they can get a new one by entering their email on the sign-in page.'
       : 'License assigned, but the email didn’t send. Click Resend link on that school.'
   });
 }

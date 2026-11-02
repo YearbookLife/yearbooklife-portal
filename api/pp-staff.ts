@@ -151,8 +151,8 @@ async function welcome(req: VercelRequest, ph: any): Promise<boolean> {
       + '<p>Your PortraitPop photographer account is ready. From your account you can send a license to each school '
       + 'you work with. The school’s yearbook admin gets their own sign-in and builds their portrait pages for Canva.</p>'
       + '<div style="background:#FFF4E5;border-left:4px solid #FF6B00;border-radius:8px;padding:12px 16px;margin:16px 0">'
-      + '<b>Tip for your schools:</b> each school’s 60 days start the first time its yearbook admin signs in. '
-      + 'Ask admins to wait to sign in until they have all of their portrait files in hand, including retakes.</div>'
+      + '<b>Send each license when the school is ready.</b> Wait until the school has all of its portrait files, including retakes. '
+      + 'The email to the school’s yearbook admin works for 7 days, and the school’s 60 days start the first time the admin signs in.</div>'
       + '<p>Next time, go to <a href="' + esc(base) + '/pp">' + esc(base.replace(/^https?:\/\//, '')) + '/pp</a> and enter your email to get a sign-in link.</p>',
       { label: 'Open my account', url }));
 }
