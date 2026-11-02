@@ -115,10 +115,15 @@ async function deleteExistingUser(supabaseUrl: string, serviceKey: string, email
 //   - "Authorization: Bearer <secret>"  (how Vercel's scheduler sends it)
 //   - "?secret=<secret>"                (so it can still be run by hand)
 //
-// Deliberately backwards compatible: if CRON_SECRET is not set in the
-// environment the route behaves exactly as it did before and logs a warning.
-// Deploying this code therefore changes nothing until the variable is added,
-// and deleting the variable is an instant rollback if anything misbehaves.
+// This FAILS CLOSED. If CRON_SECRET is not set in the environment the route
+// refuses every request and logs an error. It used to allow them through, as
+// a deliberate safety valve while the secret was being rolled out; that is no
+// longer needed now the scheduler is confirmed to authenticate.
+//
+// The consequence worth knowing: deleting CRON_SECRET no longer reverts these
+// routes to running openly, it stops them entirely. If the nightly invite run
+// ever needs to be restored in a hurry, fix or re-add the variable rather than
+// removing it.
 // ---------------------------------------------------------------------------
 function sameSecret(a: string, b: string): boolean {
   if (!a || !b || a.length !== b.length) return false;
@@ -132,8 +137,8 @@ function sameSecret(a: string, b: string): boolean {
 function staffAuthorised(req: VercelRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
-    console.warn('CRON_SECRET is not set - this route is currently unprotected');
-    return true;
+    console.error('CRON_SECRET is not set in Vercel, so this route cannot run');
+    return false;
   }
   const h = String(req.headers.authorization || '');
   const fromHeader = h.toLowerCase().indexOf('bearer ') === 0 ? h.slice(7).trim() : '';
