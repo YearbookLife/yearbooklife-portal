@@ -2015,7 +2015,7 @@
           const excerpt = (tempDiv.textContent || tempDiv.innerText || '').substring(0, 150) + '...';
           
           const postHTML = `
-            <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 24px; transition: all 0.2s; cursor: pointer;" onclick="window.open('${link}', '_blank')">
+            <div class="blog-card" style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 24px; transition: all 0.2s; cursor: pointer;" onclick="window.open('${link}', '_blank')">
               ${thumbnail ? `<img src="${thumbnail}" alt="${title}" style="width: 100%; height: 200px; object-fit: cover; object-position: center; border-radius: 8px; margin-bottom: 16px; background: #f1f5f9;" onerror="this.style.display='none'">` : ''}
               <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                 <h3 style="color: #0f172a; font-size: 20px; font-weight: 700; margin: 0; flex: 1;">${title}</h3>
@@ -2414,8 +2414,18 @@
       if (!isOpen) {
         answer.classList.add('open');
         element.classList.add('active');
+        // Analytics: which Knowledge Base question was opened (question text only)
+        trackEvent('kb_question_open', { question: (element.textContent || '').trim().slice(0, 100) || 'unknown' });
       }
     }
+
+    // Analytics: which blog post was clicked (post title only)
+    document.addEventListener('click', function (e) {
+      const card = e.target.closest('.blog-card');
+      if (!card) return;
+      const h = card.querySelector('h3');
+      trackEvent('blog_post_click', { post: (h ? h.textContent : '').trim().slice(0, 100) || 'unknown' });
+    });
 
     function handleVideoTutorials(event) {
       event.preventDefault();
