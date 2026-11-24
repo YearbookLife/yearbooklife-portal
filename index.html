@@ -735,6 +735,9 @@
             <span style="color: #334155;">Progress: <strong id="progressCurrentValue" style="color: #0f766e;"></strong></span>
             <a href="#" onclick="reopenProgress(event)" style="color: #0891b2; font-weight: 600; text-decoration: none; margin-left: auto;">Update</a>
           </div>
+          <!-- Suggestion shown under the collapsed line, matched to their answer.
+               Filled in by renderProgressSuggestion(). -->
+          <div id="progressSuggestion" style="display: none;"></div>
         </div>
 
         <div id="bulletinPosts" style="display: block; font-size: 0;">
@@ -1581,6 +1584,145 @@
       pills.forEach(function (p) { p.disabled = false; });
     }
 
+    /* -------------------------------------------------------------------------
+       PROGRESS CHECK-IN RESPONSES
+
+       After an adviser says how far along they are, we show a short suggestion
+       underneath with one or two buttons. Everything here is per-plan: a Pictavo
+       school gets Pictavo's guides, a Canva school gets Canva's.
+
+       Canva and Total Digital have no proofing guide, so that button simply does
+       not appear for them. The wording still mentions proofing, which is sound
+       advice with or without a PDF behind it.
+    ------------------------------------------------------------------------- */
+    const WEBINAR_BOOKING_URL = 'https://meetings.hubspot.com/yanet-spitler/round-robin';
+
+    const PROGRESS_LINKS = {
+      'Pictavo': {
+        training: 'https://yearbooklife.com/pictavo-webinars/',
+        proof: 'https://yearbooklife.com/wp-content/uploads/2024/01/How-to-Create-Pictavo-Proof-Pages-.pdf'
+      },
+      'YBLive': {
+        training: 'https://yearbooklife.com/yblive-training-webinars/',
+        proof: 'https://yearbooklife.com/wp-content/uploads/2023/11/How-to-Proof-Your-YBLive-Yearbook.pdf'
+      },
+      'Canva': {
+        training: 'https://yearbooklife.com/canva-design-file-settings-canva-design-info/',
+        proof: ''   // none exists yet; the button is hidden rather than broken
+      }
+    };
+
+    // Total Digital mirrors Canva, the same way PLATFORM_CONFIG does.
+    function progressLinksFor(plan) {
+      const p = String(plan || '').trim();
+      if (p.indexOf('Total Digital') === 0) return PROGRESS_LINKS['Canva'];
+      return PROGRESS_LINKS[p] || PROGRESS_LINKS['Pictavo'];
+    }
+
+    // "Your pages are due May 13, 2027. " - or nothing at all when the deal has
+    // no submit date yet, so the sentence never reads "due TBD".
+    function progressDuePhrase() {
+      const nice = String(formatNiceDate(customerData.submitDate) || '').trim();
+      if (!nice || nice.toUpperCase() === 'TBD') return '';
+      const safe = nice.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return 'Your pages are due <strong>' + safe + '</strong>. ';
+    }
+
+    function progressBtn(label, action, primary) {
+      const base = 'display:inline-block; padding:10px 18px; border-radius:8px; '
+                 + 'font-weight:700; font-size:14px; text-decoration:none; cursor:pointer;';
+      const style = primary
+        ? base + ' background:#14b8a6; color:#ffffff; border:2px solid #14b8a6;'
+        : base + ' background:#ffffff; color:#0f766e; border:2px solid #14b8a6;';
+      return '<a href="' + action.href + '"' + action.attrs
+           + ' data-progress-action="' + action.name + '"'
+           + ' style="' + style + '">' + label + '</a>';
+    }
+
+    const openInNewTab = function (href, name) {
+      return { href: href, attrs: ' target="_blank" rel="noopener"', name: name };
+    };
+    const runOnPage = function (js, name) {
+      return { href: 'javascript:void(0)', attrs: ' onclick="' + js + '"', name: name };
+    };
+
+    // Send them to the Submission Instructions block on the Quick Links tab,
+    // which already lists the right guides for their plan.
+    function goToSubmissionInstructions() {
+      switchTab(2);
+      const el = document.getElementById('submissionLinks');
+      if (el && el.scrollIntoView) {
+        setTimeout(function () {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+      }
+    }
+
+    function renderProgressSuggestion(value) {
+      const box = document.getElementById('progressSuggestion');
+      if (!box) return;
+
+      const links = progressLinksFor(customerData.planChoice);
+      const due = progressDuePhrase();
+
+      const BOOK   = progressBtn('Book a webinar', openInNewTab(WEBINAR_BOOKING_URL, 'book_webinar'), true);
+      const TRAIN  = links.training
+        ? progressBtn('Training videos', openInNewTab(links.training, 'training_videos'), false) : '';
+      const PROOF  = links.proof
+        ? progressBtn('How to proof your book', openInNewTab(links.proof, 'how_to_proof'), true) : '';
+      const SUBMIT_MAIN = progressBtn('How to submit', runOnPage('goToSubmissionInstructions()', 'how_to_submit'), true);
+      const SUBMIT_ALT  = progressBtn('How to submit', runOnPage('goToSubmissionInstructions()', 'how_to_submit'), false);
+      const SPEC   = progressBtn('Request a spec change', runOnPage('switchTab(3)', 'spec_change'), false);
+
+      let copy = '';
+      let btns = '';
+
+      if (value === 'Not started / Need help') {
+        copy = "Let's get you unstuck. Book a free one-on-one webinar and we'll walk you through setup on your actual book. Your YearbookLife representative will also contact you to offer some guidance.";
+        btns = BOOK;
+      } else if (value === 'Just started') {
+        copy = "You're underway. If you'd like help mapping out your pages or choosing a layout, our trainers run free one-on-one sessions, or check out our training videos for more tips.";
+        btns = BOOK + TRAIN;
+      } else if (value === 'About halfway') {
+        copy = 'Good place to be! ' + due + "Now is a good time to start proofing your book, if you haven't already, and to be aware of the Submission Instructions so you're prepared when the time comes!";
+        btns = PROOF ? (PROOF + SUBMIT_ALT) : SUBMIT_MAIN;
+      } else if (value === 'Nearly done') {
+        copy = 'This is great! ' + due + "Be sure to proof your book, if you haven't already, and be aware of the Submission Instructions so you're prepared when the time comes!";
+        btns = PROOF ? (PROOF + SUBMIT_ALT) : SUBMIT_MAIN;
+      } else if (value === 'Ready to submit') {
+        copy = 'This is exciting! ' + due + 'You should have proofed every page and confirmed the quantity of books you want to order is correct. If you need to change the book quantity, complete the Request a Spec Change form before you submit. Your submission instructions are below.';
+        btns = SUBMIT_MAIN + SPEC;
+      } else {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+
+      box.innerHTML =
+        '<div style="margin-top:10px; background:#ffffff; border:1px solid #99f6e4; '
+      + 'border-left:4px solid #14b8a6; border-radius:10px; padding:16px 18px;">'
+      +   '<p style="font-size:14px; color:#334155; line-height:1.65; margin:0 0 14px;">' + copy + '</p>'
+      +   '<div style="display:flex; flex-wrap:wrap; gap:10px;">' + btns + '</div>'
+      + '</div>';
+      box.style.display = 'block';
+      box.setAttribute('data-progress-value', value);
+    }
+
+    // Track which suggestions actually get used. Plan only, never anything
+    // identifying - same rule as the rest of the analytics on this page.
+    document.addEventListener('DOMContentLoaded', function () {
+      const box = document.getElementById('progressSuggestion');
+      if (!box) return;
+      box.addEventListener('click', function (e) {
+        const el = e.target.closest('[data-progress-action]');
+        if (!el) return;
+        trackEvent('progress_suggestion_click', {
+          action: el.getAttribute('data-progress-action'),
+          progress: box.getAttribute('data-progress-value') || 'unknown'
+        });
+      });
+    });
+
     function showProgressCollapsed(value) {
       const full = document.getElementById('progressCardFull');
       const collapsed = document.getElementById('progressCardCollapsed');
@@ -1588,11 +1730,15 @@
       if (valEl) valEl.textContent = value;
       if (full) full.style.display = 'none';
       if (collapsed) collapsed.style.display = 'flex';
+      renderProgressSuggestion(value);
     }
 
     function reopenProgress(e) {
       if (e) e.preventDefault();
       showProgressFull();
+      // Clear the old suggestion while they are choosing again.
+      const box = document.getElementById('progressSuggestion');
+      if (box) { box.style.display = 'none'; box.innerHTML = ''; }
     }
 
     async function saveProgress(value) {
