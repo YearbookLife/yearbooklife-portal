@@ -357,7 +357,7 @@ export function emailLayout(base: string, heading: string, bodyHtml: string, but
     + '</div></div>';
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+export async function sendEmail(to: string, subject: string, html: string, fromName = 'PortraitPop by YearbookLife'): Promise<boolean> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) { console.error('pp email: GMAIL_USER / GMAIL_APP_PASSWORD not set'); return false; }
@@ -365,7 +365,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass }
     });
-    await transporter.sendMail({ from: 'PortraitPop by YearbookLife <' + user + '>', to, subject, html });
+    await transporter.sendMail({ from: fromName + ' <' + user + '>', to, subject, html });
     return true;
   } catch (e) {
     console.error('pp email failed:', e);
