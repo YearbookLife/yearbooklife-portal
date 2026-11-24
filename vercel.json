@@ -182,6 +182,11 @@
       "methods": ["GET"]
     },
     {
+      "src": "/api/pagepilot-notify",
+      "dest": "/api/pagepilot-notify.ts",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.ts",
       "methods": [
